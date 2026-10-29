@@ -81,7 +81,6 @@ git remote -v
 
 Expected output:
 
-
 origin  https://github.com/svpontes/petshopApp.git (fetch)
 origin  https://github.com/svpontes/petshopApp.git (push)
 
@@ -103,7 +102,8 @@ Inside `petshop-team`, run:
 
 dotnet run --project .\PetShopApp.csproj
 
-type localhost:5044 in the webbrowser and press enter
+type localhost:5016 in the webbrowser and press enter.
+ATTENTION: if port 5016 is used for another app in your pc the output will be an error. Please use another port. Go to folder properties/lauchSettings.json and change the port. "applicationUrl": "http://localhost:5016",
 
 Expected result:
 A white page displaying "Hello World!"
