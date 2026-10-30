@@ -125,8 +125,7 @@ Watch the animation to understand how we develop features locally, test them, su
     ## Show README in a Browser and present the animation link
     # PRESS CTRL + click (Following Link)
     https://svpontes.github.io/petshopApp/
-    [Open the workflow animation](./docs/petshop-workflow-animation.html)
-
+    
     ## Show the ANIMATION
     # PRESS CTRL + click (Following Link)
 [Watch the team workflow animation](https://svpontes.github.io/petshopApp/docs/petshop-workflow-animation.html)
