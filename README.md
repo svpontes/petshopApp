@@ -95,6 +95,9 @@ Inside petshop-team, run
 
 dotnet new blazor --name PetShopApp --output . --framework net10.0 --interactivity Server --all-interactive --empty
 
+C# Dev Kit, vscode extension 
+
+
 *******************
 # Testing the application
 
@@ -107,3 +110,18 @@ ATTENTION: if port 5016 is used for another app in your pc the output will be an
 
 Expected result:
 A white page displaying "Hello World!"
+
+## RUN THE APPLICATION
+
+From vscode terminal run:
+    dotnet restore
+    dotnet run --project .\PetShoppApp.csproj~
+
+## ****************VERY IMPORTANT ******************
+## Team Development Workflow
+
+Watch the animation to understand how we develop features locally, test them, submit pull requests, and review changes before merging.
+
+[Open the workflow animation](./petshop-workflow-animation.html)
+
+Download the HTML file, open it in your browser, and click **Play animation**.
