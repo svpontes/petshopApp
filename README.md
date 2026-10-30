@@ -122,6 +122,11 @@ From vscode terminal run:
 
 Watch the animation to understand how we develop features locally, test them, submit pull requests, and review changes before merging.
 
-[Open the workflow animation](./petshop-workflow-animation.html)
+    ## Show README in a Browser and present the animation link
+    # PRESS CTRL + click (Following Link)
+    https://svpontes.github.io/petshopApp/
+    [Open the workflow animation](./docs/petshop-workflow-animation.html)
 
-Download the HTML file, open it in your browser, and click **Play animation**.
+    ## Show the ANIMATION
+    # PRESS CTRL + click (Following Link)
+[Watch the team workflow animation](https://svpontes.github.io/petshopApp/docs/petshop-workflow-animation.html)
