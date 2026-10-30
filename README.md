@@ -122,10 +122,10 @@ From vscode terminal run:
 
 Watch the animation to understand how we develop features locally, test them, submit pull requests, and review changes before merging.
 
-    ## Show README in a Browser and present the animation link
+    ## Show README in a Browser and present the animation
     # PRESS CTRL + click (Following Link)
-    https://svpontes.github.io/petshopApp/
-    
+https://svpontes.github.io/petshopApp/
+
     ## Show the ANIMATION
     # PRESS CTRL + click (Following Link)
 [Watch the team workflow animation](https://svpontes.github.io/petshopApp/docs/petshop-workflow-animation.html)
