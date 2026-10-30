@@ -1,0 +1,98 @@
+@using PetShopApp.Models
+@namespace PetShopApp.Components.Shared
+
+@* REUSABLE COMPONENT: AdminProductsTable
+    Purpose: Provides a standardized, responsive table for displaying and managing products 
+    within the administrative dashboard.
+*@
+
+<div class="table-responsive">
+    <table class="table border align-middle mb-0">
+        <thead class="table-dark small text-uppercase">
+            <tr>
+                <th>ID</th>
+                <th>Preview</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (Products == null || !Products.Any())
+            {
+                @* Placeholder row displayed when the product list is empty *@
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        No products found.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @* Iterate through the product collection passed via parameters *@
+                @foreach (var p in Products)
+                {
+                    @* @key helps Blazor optimize rendering when the list changes *@
+                    <tr @key="p.Id">
+                        <td>@p.Id</td>
+                        <td>
+                            @* Product thumbnail with fallback logic:
+                                - Lazy loading for performance.
+                                - Onerror handler to display a placeholder if the image fails to load.
+                            *@
+                            <img src="@GetImageUrl(p.ImageUrl)"
+                                 alt="@p.Name"
+                                 style="width:50px;height:50px;object-fit:cover;"
+                                 loading="lazy"
+                                 decoding="async"
+                                 draggable="false"
+                                 onerror="this.onerror=null;this.src='/images/placeholder.png';" />
+                        </td>
+                        <td>@p.Name</td>
+                        <td>@p.Price.ToString("C")</td>
+                        <td>
+                            @* Action buttons trigger EventCallbacks to notify the parent component 
+                                (e.g., Dashboard) to handle the specific business logic.
+                            *@
+                            <button class="btn btn-sm btn-outline-primary me-2"
+                                    @onclick="() => OnEdit.InvokeAsync(p)">
+                                Edit
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="() => OnDelete.InvokeAsync(p.Id)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    // Parameter: The list of products to be rendered in the table
+    [Parameter] public IReadOnlyList<Product> Products { get; set; } = Array.Empty<Product>();
+
+    // Callback: Notifies the parent when the 'Edit' button is clicked
+    [Parameter] public EventCallback<Product> OnEdit { get; set; }
+
+    // Callback: Notifies the parent when the 'Delete' button is clicked
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    /// <summary>
+    /// Helper method to validate the image URL.
+    /// Returns a default placeholder if the provided URL is null or empty.
+    /// </summary>
+    /// <param name="url">The product image URL.</param>
+    /// <returns>A valid string path to an image.</returns>
+    private static string GetImageUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return "/images/placeholder.png";
+
+        return url;
+    }
+}

@@ -1,0 +1,137 @@
+@page "/cart"
+@using PetShopApp.Services
+@inject CartService CartService
+@inject NavigationManager NavManager
+
+@* --- SHOPPING CART COMPONENT ---
+   Purpose: Provides a detailed view of items added to the bag. 
+   Allows users to adjust quantities, remove items, and see the total cost 
+   before proceeding to the final checkout.
+*@
+
+<div class="container mt-5 pt-5 pb-5">
+    <h2 class="fw-bold mb-4 text-uppercase" style="letter-spacing: 2px;">Your Shopping Bag</h2>
+
+    @if (CartService.CartItems.Any())
+    {
+        <div class="row">
+            @* --- LEFT COLUMN: ITEM LIST --- *@
+            <div class="col-lg-8">
+                @foreach (var item in CartService.CartItems)
+                {
+                    <div class="card mb-3 border-0 border-bottom rounded-0 bg-transparent">
+                        <div class="row g-0 align-items-center py-3">
+                            @* Product Thumbnail *@
+                            <div class="col-md-2 col-3">
+                                <img src="@item.Product.ImageUrl" class="img-fluid" alt="@item.Product.Name">
+                            </div>
+
+                            @* Product Info (Name, Size, Unit Price) *@
+                            <div class="col-md-6 col-9 px-3">
+                                <h5 class="fw-bold m-0">@item.Product.Name</h5>
+                                <p class="text-secondary small mb-1">Size: <span class="text-dark fw-bold">@item.Size</span></p>
+                                <p class="fw-bold">@item.Product.Price.ToString("C")</p>
+                            </div>
+
+                            @* Controls (Quantity Toggle and Remove) *@
+                            <div class="col-md-4 d-flex align-items-center justify-content-between px-3">
+                                <div class="d-flex align-items-center border px-2">
+                                    <button class="btn btn-sm p-1" @onclick="() => UpdateQty(item, -1)">-</button>
+                                    <span class="mx-3 fw-bold">@item.Quantity</span>
+                                    <button class="btn btn-sm p-1" @onclick="() => UpdateQty(item, 1)">+</button>
+                                </div>
+                                <button class="btn text-danger ms-3" @onclick="() => RemoveItem(item)">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* --- RIGHT COLUMN: ORDER SUMMARY --- *@
+            <div class="col-lg-4">
+                <div class="card p-4 bg-light border-0 rounded-0 shadow-sm">
+                    <h4 class="fw-bold mb-4">Summary</h4>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal</span>
+                        <span>@CartService.TotalPrice.ToString("C")</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4">
+                        <span>Shipping</span>
+                        <span class="text-success fw-bold">FREE</span>
+                    </div>
+                    <hr />
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="h5 fw-bold">Total</span>
+                        <span class="h5 fw-bold">@CartService.TotalPrice.ToString("C")</span>
+                    </div>
+
+                    @* Action Buttons *@
+                    <button @onclick="GoToCheckout" 
+                            class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 mb-2">
+                        Checkout Now
+                    </button>
+                    <a href="/catalog" class="btn btn-outline-dark w-100 py-2 rounded-0 small">
+                        Continue Shopping
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        @* --- EMPTY CART FALLBACK --- *@
+        <div class="text-center py-5">
+            <i class="bi bi-bag-x display-1 text-secondary"></i>
+            <h3 class="mt-4 fw-bold">Your bag is empty.</h3>
+            <p class="text-secondary">Looks like you haven't added any exclusive PNG arts to your bag yet.</p>
+            <a href="/catalog" class="btn btn-dark px-5 py-3 mt-3 rounded-0 fw-bold">DISCOVER PRODUCTS</a>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Updates the quantity of a specific item by communicating with the CartService.
+    /// change can be +1 or -1.
+    /// </summary>
+    private void UpdateQty(CartItem item, int change)
+    {
+        CartService.UpdateQuantity(item.Product.Id, item.Size, change);
+    }
+
+    /// <summary>
+    /// Removes the selected item from the global cart state.
+    /// </summary>
+    private void RemoveItem(CartItem item)
+    {
+        CartService.RemoveFromCart(item.Product.Id, item.Size);
+    }
+
+    /// <summary>
+    /// Lifecycle: Subscribes to the CartService.OnChange event to ensure 
+    /// the UI refreshes whenever the cart data is modified.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        CartService.OnChange += StateHasChanged;
+    }
+
+    /// <summary>
+    /// Garbage Collection: Unsubscribes from the event to prevent memory leaks 
+    /// in the Blazor Server circuit.
+    /// </summary>
+    public void Dispose()
+    {
+        CartService.OnChange -= StateHasChanged;
+    }
+
+    /// <summary>
+    /// Redirects the user to the checkout page.
+    /// </summary>
+    private void GoToCheckout()
+    {
+        NavManager.NavigateTo("/checkout");
+    }
+}

@@ -1,0 +1,140 @@
+@page "/admin/orders"
+@using PetShopApp.Models
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@using PetShopApp.Services
+@inject AuthService Auth
+@inject NavigationManager NavManager
+@inject ApplicationDbContext DbContext
+
+@* --- ADMIN SALES LEDGER ---
+   Purpose: Provides a comprehensive overview of all store transactions.
+   Features: Detailed customer info, serialized item recovery, and role-based security.
+*@
+
+<div class="container mt-5 pt-5 pb-5">
+    @* --- HEADER --- *@
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-uppercase m-0" style="letter-spacing: 2px;">Sales Ledger</h2>
+        <a href="/admin" class="btn btn-outline-dark btn-sm rounded-0 px-4 text-uppercase fw-bold">
+            <i class="bi bi-arrow-left me-2"></i> Dashboard
+        </a>
+    </div>
+
+    @* --- VIEW LOGIC: EMPTY STATE OR DATA FEED --- *@
+    @if (orders == null || !orders.Any())
+    {
+        <div class="alert alert-light border-dark rounded-0 text-center py-5">
+            <p class="text-muted m-0">NO ORDERS FOUND IN THE LEDGER.</p>
+        </div>
+    }
+    else
+    {
+        @* Iterate through orders sorted by the most recent date *@
+        @foreach (var order in orders)
+        {
+            <div class="card rounded-0 border-dark mb-4 shadow-sm">
+                @* Order Metadata Header *@
+                <div class="card-header bg-dark text-white rounded-0 d-flex justify-content-between align-items-center py-3">
+                    <span class="fw-bold" style="letter-spacing: 1px;">ORDER #@order.Id.ToString("D5")</span>
+                    <span class="small">@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="row">
+                        @* --- COLUMN 1: CUSTOMER LOGISTICS --- *@
+                        <div class="col-md-6 border-end">
+                            <h6 class="fw-bold text-uppercase x-small text-muted mb-3" style="letter-spacing: 1px;">Customer Details</h6>
+                            <p class="mb-1"><strong>@order.CustomerName</strong></p>
+                            <p class="mb-1 small text-primary">@order.CustomerEmail</p>
+                            <p class="small text-secondary mt-2">@order.ShippingAddress</p>
+                        </div>
+
+                        @* --- COLUMN 2: TRANSACTION ITEMS --- *@
+                        <div class="col-md-6 px-md-4 mt-4 mt-md-0">
+                            <h6 class="fw-bold text-uppercase x-small text-muted mb-3" style="letter-spacing: 1px;">Items Purchased</h6>
+                            
+                            <ul class="list-unstyled">
+                                @try 
+                                {
+                                    @* DESERIALIZATION LOGIC: 
+                                       Converts the JSON string stored in SQLite back into a readable list of items.
+                                    *@
+                                    if (!string.IsNullOrEmpty(order.SerializedItems))
+                                    {
+                                        var items = JsonSerializer.Deserialize<List<OrderItemSummary>>(order.SerializedItems);
+                                        if (items != null)
+                                        {
+                                            foreach (var item in items)
+                                            {
+                                                <li class="d-flex justify-content-between border-bottom pb-2 mb-2 small">
+                                                    <span>
+                                                        <span class="fw-bold text-dark">@item.Quantity x</span> @item.Name 
+                                                        <span class="badge bg-dark rounded-0 ms-1" style="font-size: 0.6rem;">@item.Size</span>
+                                                    </span>
+                                                    <span class="fw-bold">@((item.PriceAtPurchase * item.Quantity).ToString("C"))</span>
+                                                </li>
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <li class="text-danger small">No item data found (Legacy Order).</li>
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    <li class="text-muted small">Error loading items: @ex.Message</li>
+                                }
+                            </ul>
+
+                            @* Financial Summary for the specific order *@
+                            <div class="d-flex justify-content-between mt-3 pt-2 border-top">
+                                <span class="fw-bold text-uppercase small">Grand Total:</span>
+                                <span class="h5 fw-bold text-dark">@order.TotalAmount.ToString("C")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<Order> orders = new();
+
+    /// <summary>
+    /// Lightweight DTO used to map deserialized JSON data from the database.
+    /// Captures the price at the exact moment of purchase.
+    /// </summary>
+    public class OrderItemSummary
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Size { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal PriceAtPurchase { get; set; }
+    }
+
+    /// <summary>
+    /// Lifecycle: Performs a security audit before fetching sensitive financial records.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. High-Priority Security Check
+        if (!Auth.IsAdmin)
+        {
+            NavManager.NavigateTo("/");
+            return; 
+        }
+
+        // 2. Database query: Order history retrieved in descending chronological order
+        orders = await DbContext.Orders
+            .OrderByDescending(o => o.OrderDate)
+            .ToListAsync();
+    }
+}
+
+<style>
+    .x-small { font-size: 0.65rem; }
+</style>

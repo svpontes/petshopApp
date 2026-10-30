@@ -1,0 +1,265 @@
+@page "/admin/products"
+@using Microsoft.EntityFrameworkCore
+@using PetShopApp.Models
+@using PetShopApp.Services
+@inject ApplicationDbContext DbContext
+@inject NavigationManager NavManager
+@inject AuthService AuthService
+@rendermode InteractiveServer
+
+@* --- ADMIN PRODUCT MANAGEMENT ---
+   Purpose: Centralized dashboard for administrators to manage the shirt inventory.
+   Features: Dynamic search, image previewing, and a dual-purpose Create/Edit form.
+*@
+
+<div class="container mt-5 pt-5">
+    <h2 class="fw-bold text-uppercase mb-4">Admin Product Inventory</h2>
+
+    @* --- SECURITY LAYER --- *@
+    @if (!AuthService.IsAdmin)
+    {
+        <div class="alert alert-danger rounded-0">
+            Access denied. Administrators only.
+        </div>
+    }
+    else
+    {
+        @* --- PRODUCT FORM (CREATE / EDIT) --- *@
+        <div class="card rounded-0 mb-4 shadow-sm">
+            <div class="card-header bg-dark text-white text-uppercase small fw-bold">
+                @* Toggle header text based on whether an ID exists *@
+                @(editingProduct.Id == 0 ? "Add New Product" : "Edit Product")
+            </div>
+
+            <div class="card-body">
+                <EditForm Model="@editingProduct" OnValidSubmit="SaveProduct">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="row g-3">
+                        @* Basic Product Info Inputs *@
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Product Name</label>
+                            <InputText @bind-Value="editingProduct.Name" class="form-control rounded-0" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Price</label>
+                            <InputNumber @bind-Value="editingProduct.Price" class="form-control rounded-0" />
+                        </div>
+
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">Primary Image Path
+                               
+                            </label>
+                            <InputText @bind-Value="editingProduct.ImageUrl" class="form-control rounded-0" placeholder="/images/imageF1.png" />
+                        </div>
+
+                        @* Image Gallery Management: Uses a raw string processed by new lines *@
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">Additional Image Paths</label>
+                            <InputTextArea @bind-Value="secondaryImagesText" class="form-control rounded-0" rows="4" />
+                            <small class="text-muted d-block mt-2">
+                                One image path per line.<br />
+                                /images/imageB1.png<br />
+                                /images/imageFm1.png<br />
+                                /images/imageBf1.png
+                            </small>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">Description</label>
+                            <InputTextArea @bind-Value="editingProduct.Description" class="form-control rounded-0" />
+                        </div>
+
+                        @* Action Buttons for the Form *@
+                        <div class="col-12 d-flex gap-2">
+                            <button type="submit" class="btn btn-dark rounded-0">
+                                @(editingProduct.Id == 0 ? "Create Product" : "Update Product")
+                            </button>
+
+                            <button type="button" class="btn btn-outline-secondary rounded-0" @onclick="ResetForm">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+
+        @* --- INVENTORY TABLE & SEARCH --- *@
+        <div class="card rounded-0 shadow-sm">
+            <div class="card-body">
+
+                @* Live Search Filter *@
+                <div class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input class="form-control rounded-0"
+                               @bind="searchTerm"
+                               @bind:event="oninput"
+                               placeholder="Search product..." />
+                    </div>
+
+                    <div class="col-md-4">
+                        <button class="btn btn-outline-dark rounded-0 w-100" @onclick="LoadProducts">
+                            Refresh List
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table border align-middle">
+                        <thead class="table-dark small text-uppercase">
+                            <tr>
+                                <th>ID</th>
+                                <th>Preview</th>
+                                <th>Name</th>
+                                <th>Price</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @* Uses the Computed Property FilteredProducts for real-time results *@
+                            @foreach (var p in FilteredProducts)
+                            {
+                                <tr @key="p.Id">
+                                    <td>@p.Id</td>
+                                    <td>
+                                        <img src="@GetImageUrl(p.ImageUrl)"
+                                             alt="@p.Name"
+                                             style="width:50px;height:50px;object-fit:cover;display:block;background-color:#f8f9fa;"
+                                             onerror="this.onerror=null;this.src='/images/placeholder.png';" />
+                                    </td>
+                                    <td>@p.Name</td>
+                                    <td>@p.Price.ToString("C")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditProduct(p)">
+                                            Edit
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProduct(p.Id)">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+
+                            @if (!FilteredProducts.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">No products found.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Product> products = new();
+    private Product editingProduct = new();
+    private string searchTerm = "";
+    private string secondaryImagesText = "";
+
+    /// <summary>
+    /// Computed property that filters the product list based on the search string.
+    /// This happens in-memory for fast UI response.
+    /// </summary>
+    private IEnumerable<Product> FilteredProducts =>
+        string.IsNullOrWhiteSpace(searchTerm)
+            ? products
+            : products.Where(p => p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Initial load and security redirect.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAdmin)
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        products = await DbContext.Products.OrderBy(p => p.Name).ToListAsync();
+    }
+
+    /// <summary>
+    /// Loads a selected product into the form for modification.
+    /// </summary>
+    private Task EditProduct(Product p)
+    {
+        editingProduct = new Product
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Description = p.Description,
+            Price = p.Price,
+            ImageUrl = p.ImageUrl,
+            SecondaryImageUrlsRaw = p.SecondaryImageUrlsRaw
+        };
+
+        secondaryImagesText = p.SecondaryImageUrlsRaw ?? "";
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Persists changes to the SQLite database. Handles both new entry insertion 
+    /// and existing entry updates.
+    /// </summary>
+    private async Task SaveProduct()
+    {
+        editingProduct.SecondaryImageUrlsRaw = secondaryImagesText?.Trim() ?? "";
+
+        if (string.IsNullOrWhiteSpace(editingProduct.ImageUrl))
+            editingProduct.ImageUrl = "/images/placeholder.png";
+
+        if (editingProduct.Id == 0)
+        {
+            DbContext.Products.Add(editingProduct);
+        }
+        else
+        {
+            var dbProduct = await DbContext.Products.FindAsync(editingProduct.Id);
+            if (dbProduct == null) return;
+
+            dbProduct.Name = editingProduct.Name;
+            dbProduct.Description = editingProduct.Description;
+            dbProduct.Price = editingProduct.Price;
+            dbProduct.ImageUrl = editingProduct.ImageUrl;
+            dbProduct.SecondaryImageUrlsRaw = editingProduct.SecondaryImageUrlsRaw;
+        }
+
+        await DbContext.SaveChangesAsync();
+        await LoadProducts();
+        ResetForm();
+    }
+
+    private async Task DeleteProduct(int id)
+    {
+        var product = await DbContext.Products.FindAsync(id);
+        if (product == null) return;
+
+        DbContext.Products.Remove(product);
+        await DbContext.SaveChangesAsync();
+        await LoadProducts();
+    }
+
+    private void ResetForm()
+    {
+        editingProduct = new Product();
+        secondaryImagesText = "";
+    }
+
+    private static string GetImageUrl(string? url)
+    {
+        return string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
+    }
+}

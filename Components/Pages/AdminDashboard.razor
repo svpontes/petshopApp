@@ -1,0 +1,152 @@
+@page "/admin"
+@using Microsoft.EntityFrameworkCore
+@using PetShopApp.Services
+@inject AuthService Auth
+@inject NavigationManager NavManager
+@inject ApplicationDbContext DbContext
+
+@* --- ADMIN DASHBOARD ---
+   Purpose: The central management hub for the BluntWear project.
+   Provides real-time business metrics (revenue, order counts) and secure 
+   access points for managing orders, messages, and subscribers.
+*@
+
+<div class="container mt-5 pt-5 pb-5">
+    <h2 class="fw-bold text-uppercase mb-2" style="letter-spacing: 3px;">Admin Ledger</h2>
+    <p class="text-secondary mb-5 small text-uppercase">Control Center // _define_name_ Project</p>
+
+    <div class="row g-4">
+        @* --- MODULE 1: ORDERS & SALES --- *@
+        <div class="col-md-4">
+            <div class="card rounded-0 border-dark h-100 shadow-sm transition-card">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between mb-3">
+                        <i class="bi bi-cart-check fs-2"></i>
+                        <span class="badge bg-success rounded-0">Online</span>
+                    </div>
+                    <h4 class="fw-bold text-uppercase">Orders & Sales</h4>
+                    <p class="text-secondary small">Manage customer purchases and financial records.</p>
+                    <div class="mt-auto">
+                        <hr />
+                        <div class="d-flex justify-content-between align-items-center">
+                            @* Aggregate count of all orders in the system *@
+                            <span class="h5 m-0 fw-bold">@totalOrders</span>
+                            <a href="/admin/orders" class="btn btn-dark btn-sm rounded-0 px-3 text-uppercase fw-bold">Open Ledger</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* --- MODULE 2: CUSTOMER SUPPORT --- *@
+        <div class="col-md-4">
+            <div class="card rounded-0 border-dark h-100 shadow-sm transition-card">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between mb-3">
+                        <i class="bi bi-chat-left-dots fs-2"></i>
+                        <span class="badge bg-dark rounded-0">Support</span>
+                    </div>
+                    <h4 class="fw-bold text-uppercase">Messages</h4>
+                    <p class="text-secondary small">Customer inquiries and custom PNG requests.</p>
+                    <div class="mt-auto">
+                        <hr />
+                        <div class="d-flex justify-content-between align-items-center">
+                            @* Aggregate count of contact form submissions *@
+                            <span class="h5 m-0 fw-bold">@totalMessages</span>
+                            <a href="/admin/messages" class="btn btn-dark btn-sm rounded-0 px-3 text-uppercase fw-bold">View Logs</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* --- MODULE 3: MARKETING / NEWSLETTER --- *@
+        <div class="col-md-4">
+            <div class="card rounded-0 border-dark h-100 shadow-sm transition-card bg-black text-white">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between mb-3">
+                        <i class="bi bi-people fs-2 text-white"></i>
+                        <span class="badge bg-secondary rounded-0">Growth</span>
+                    </div>
+                    <h4 class="fw-bold text-uppercase">Subscribers</h4>
+                    <p class="text-secondary small">People waiting for exclusive drops via Newsletter.</p>
+                    <div class="mt-auto">
+                        <hr class="border-secondary" />
+                        <div class="d-flex justify-content-between align-items-center">
+                            @* Current size of the marketing mailing list *@
+                            <span class="h5 m-0 fw-bold">@subscriberCount</span>
+                            <a href="/admin/subscribers" class="btn btn-light btn-sm rounded-0 px-3 text-uppercase fw-bold">Manage List</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* --- QUICK FINANCIAL STATS ---
+       This section provides instant feedback on the store's financial performance 
+       without requiring a full report generation.
+    *@
+    <div class="mt-5 p-4 bg-light border rounded-0">
+        <h6 class="fw-bold text-uppercase x-small text-muted mb-3">Quick Financial Status</h6>
+        <div class="row text-center">
+            <div class="col-6 border-end">
+                <span class="text-muted small d-block">Revenue</span>
+                <span class="h4 fw-bold">@totalRevenue.ToString("C")</span>
+            </div>
+            <div class="col-6">
+                <span class="text-muted small d-block">Avg. Ticket</span>
+                <span class="h4 fw-bold">@avgTicket.ToString("C")</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Metric variables loaded from the database
+    private int totalOrders;
+    private int totalMessages;
+    private decimal totalRevenue;
+    private decimal avgTicket;
+    private int subscriberCount;
+
+    /// <summary>
+    /// SECURITY PROTOCOL: This method executes before anything else.
+    /// Redirects unauthorized users away from the admin area to prevent data exposure.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        if (!Auth.IsAdmin)
+        {
+            NavManager.NavigateTo("/");
+        }
+    }
+
+    /// <summary>
+    /// DATA INITIALIZATION: Performs aggregate queries to calculate 
+    /// the summary metrics displayed on the dashboard cards.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        // Fetch raw counts for current status
+        totalOrders = await DbContext.Orders.CountAsync();
+        totalMessages = await DbContext.ContactMessages.CountAsync();
+        subscriberCount = await DbContext.Subscribers.CountAsync();
+        
+        // Calculate financial performance if orders exist
+        if (totalOrders > 0)
+        {
+            totalRevenue = await DbContext.Orders.SumAsync(o => o.TotalAmount);
+            avgTicket = totalRevenue / totalOrders; // Simple mean calculation
+        }
+    }
+}
+
+<style>
+    /* Styling for the branded x-small labels */
+    .x-small { font-size: 0.65rem; letter-spacing: 1.5px; }
+
+    /* Interactive UI effects to make the dashboard feel responsive */
+    .transition-card { transition: all 0.3s ease; border: 1px solid #dee2e6; }
+    .transition-card:hover { transform: translateY(-5px); border-color: #000; box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+</style>

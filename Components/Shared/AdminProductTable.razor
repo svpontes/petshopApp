@@ -1,0 +1,72 @@
+@using PetShopApp.Models
+@using PetShopApp.Components.Shared
+@namespace PetShopApp.Components.Shared
+
+<div class="table-responsive">
+    <table class="table border align-middle mb-0">
+        <thead class="table-dark small text-uppercase">
+            <tr>
+                <th>ID</th>
+                <th>Preview</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @if (Products == null || !Products.Any())
+            {
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        No products found.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var p in Products)
+                {
+                    <tr @key="p.Id">
+                        <td>@p.Id</td>
+                        <td>
+                            <img src="@GetImageUrl(p.ImageUrl)"
+                                 alt="@p.Name"
+                                 style="width:50px;height:50px;object-fit:cover;"
+                                 loading="lazy"
+                                 decoding="async"
+                                 draggable="false"
+                                 onerror="this.src='/images/placeholder.png';" />
+                        </td>
+                        <td>@p.Name</td>
+                        <td>@p.Price.ToString("C")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-2"
+                                    @onclick="() => OnEdit.InvokeAsync(p)">
+                                Edit
+                            </button>
+
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="() => OnDelete.InvokeAsync(p.Id)">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<Product> Products { get; set; } = Array.Empty<Product>();
+    [Parameter] public EventCallback<Product> OnEdit { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    private static string GetImageUrl(string? url)
+    {
+        return string.IsNullOrWhiteSpace(url)
+            ? "/images/placeholder.png"
+            : url;
+    }
+}

@@ -1,0 +1,78 @@
+@* --- STAR RATING COMPONENT ---
+    Purpose: A reusable UI element to display and capture product ratings.
+    Supports: Fractional display (half-stars), interactive hover effects, and read-only modes.
+*@
+
+<div class="d-flex align-items-center gap-1">
+    @for (int i = 1; i <= 5; i++)
+    {
+        int starIndex = i;
+        
+        @* Determine which rating to show: 
+           If the user is hovering, show the hover value; otherwise, show the actual Rating. *@
+        var displayRating = hoverRating != 0 ? hoverRating : Rating;
+
+        string iconClass;
+
+        @* Icon Logic: 
+           1. Full Star: If index is less than or equal to the floor of the rating.
+           2. Half Star: If the difference between the index and rating is 0.5 or less.
+           3. Empty Star: Otherwise. 
+        *@
+        if (starIndex <= Math.Floor(displayRating))
+            iconClass = "bi-star-fill";
+        else if (starIndex - displayRating <= 0.5)
+            iconClass = "bi-star-half";
+        else
+            iconClass = "bi-star";
+
+        <i class="bi @iconClass"
+           style="cursor: @(IsReadOnly ? "default" : "pointer");
+                  color: @(starIndex <= displayRating ? "#FFD700" : "#ccc");
+                  font-size: @(Size)rem;"
+           @onclick="() => HandleClick(starIndex)"
+           @onmouseover="() => { if(!IsReadOnly) hoverRating = starIndex; }"
+           @onmouseout="() => { if(!IsReadOnly) hoverRating = 0; }">
+        </i>
+    }
+
+    @* Optional numerical display of the rating (e.g., "4.5") *@
+    @if (ShowNumber)
+    {
+        <span class="ms-2 small text-muted">(@Rating.ToString("0.0"))</span>
+    }
+</div>
+
+@code {
+    // Current rating value (supports doubles for average displays)
+    [Parameter] public double Rating { get; set; }
+
+    // If true, interactions (click/hover) are disabled
+    [Parameter] public bool IsReadOnly { get; set; } = true;
+
+    // Adjusts the star icon size in REM units
+    [Parameter] public double Size { get; set; } = 1.2;
+
+    // Toggle to show the numeric value next to the stars
+    [Parameter] public bool ShowNumber { get; set; } = false;
+
+    // Callback to notify parent components when a user selects a new rating
+    [Parameter] public EventCallback<int> OnRatingChanged { get; set; }
+
+    // Temporary state to track user hover position for interactive feedback
+    private int hoverRating = 0;
+
+    /// <summary>
+    /// Processes the user's click on a star.
+    /// Updates local state and triggers the external callback if the component is not read-only.
+    /// </summary>
+    private async Task HandleClick(int newRating)
+    {
+        if (!IsReadOnly)
+        {
+            Rating = newRating;
+            hoverRating = 0;
+            await OnRatingChanged.InvokeAsync(newRating);
+        }
+    }
+}

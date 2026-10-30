@@ -1,0 +1,87 @@
+@page "/login"
+@inject PetShopApp.Services.AuthService AuthService
+@inject NavigationManager NavManager
+
+@* --- LOGIN PAGE ---
+   Purpose: Provides an interface for user authentication.
+   It interacts with the AuthService to validate credentials and handles 
+   role-based navigation upon a successful session start.
+*@
+
+<div class="row justify-content-center align-items-center min-vh-100" style="margin-top: -100px;">
+    <div class="col-md-4">
+        @* Branded Login Card: Uses a minimalist black/white aesthetic consistent with BluntWear *@
+        <div class="card border-0 shadow-lg p-4 bg-black text-white rounded-0">
+            <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">LOGIN</h2>
+            
+            @* User Input Fields with Two-Way Data Binding (@bind) *@
+            <div class="mb-3">
+                <label class="small fw-bold text-secondary">EMAIL</label>
+                <input type="email" @bind="email" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
+            </div>
+
+            <div class="mb-4">
+                <label class="small fw-bold text-secondary">PASSWORD</label>
+                <input type="password" @bind="password" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
+                <a href="/forgot-password" class="hover-white small text-secondary text-decoration-none" text-align="right" style="float: right; margin-top: 5px;">
+                    Forgot password? Click Here!
+                </a>
+            </div>
+            
+            @* Error Feedback: Displayed only if the authentication service returns false *@
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger bg-transparent border-danger text-danger rounded-0 small py-2 mb-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i> @errorMessage
+                </div>
+            }
+
+            @* Submission Trigger *@
+            <button class="btn btn-light w-100 fw-bold py-2 rounded-0 mb-3" @onclick="HandleLogin">
+                ENTER my text name app or page Account
+            </button>
+
+            @* Navigation to Registration flow *@
+            <div class="text-center">
+                <a href="/register" class="text-secondary small text-decoration-none hover-white">Don't have an account? Sign Up</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Local state variables for form inputs and feedback
+    private string email = "";
+    private string password = "";
+    private string errorMessage = "";
+
+    /// <summary>
+    /// Processes the login request.
+    /// Communicates with the AuthService and redirects the user based on their specific Role.
+    /// </summary>
+    private async Task HandleLogin()
+    {
+        // Reset error message state before attempting new login
+        errorMessage = "";
+
+        // Call the asynchronous authentication service
+        bool success = await AuthService.Login(email, password);
+
+        if (success)
+        {
+            @* --- ROLE-BASED REDIRECTION ---
+               Admin users are directed to the management dashboard, 
+               while standard customers are sent to the storefront home.
+            *@
+            if (AuthService.CurrentUser?.Role == "Admin")
+                NavManager.NavigateTo("/admin");
+            else
+                NavManager.NavigateTo("/");
+        }
+        else
+        {
+            // Update UI state with failure message
+            errorMessage = "Invalid credentials.";
+        }
+    }
+}

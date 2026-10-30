@@ -1,0 +1,270 @@
+@page "/profile-backup"
+@using PetShopApp.Services
+@using PetShopApp.Models
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@inject AuthService AuthService
+@inject ApplicationDbContext DbContext
+@inject NavigationManager NavManager
+@rendermode InteractiveServer
+
+<div class="container mt-5 pt-5 pb-5" style="min-height: 80vh;">
+    @* --- AUTHENTICATION CHECK --- 
+       Ensures only logged-in users can access the profile data.
+    *@
+    @if (AuthService.CurrentUser == null)
+    {
+        <div class="text-center mt-5">
+            <h4 class="fw-bold">PLEASE LOGIN TO VIEW YOUR PROFILE</h4>
+            <a href="/login" class="btn btn-dark rounded-0 mt-3 px-5">LOGIN</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-5">
+            @* --- LEFT COLUMN: PROFILE MANAGEMENT --- *@
+            <div class="col-lg-4">
+                <div class="card border-dark rounded-0 shadow-sm">
+                    <div class="card-body p-4">
+                        @if (!isEditing)
+                        {
+                            @* DISPLAY MODE: Shows current user information *@
+                            <div class="text-center mb-4">
+                                <div class="bg-black text-white d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 80px; height: 80px;">
+                                    <i class="bi bi-person fs-1"></i>
+                                </div>
+                                <h5 class="fw-bold text-uppercase m-0">@AuthService.CurrentUser?.Name</h5>
+                                <p class="text-muted small mb-0">@AuthService.CurrentUser?.Email</p>
+                            </div>
+
+                            <hr />
+
+                            <div class="mb-3">
+                                <label class="x-small text-muted text-uppercase fw-bold">Phone</label>
+                                <p class="m-0 small text-secondary">@AuthService.CurrentUser?.Phone</p>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="x-small text-muted text-uppercase fw-bold">Address</label>
+                                <p class="m-0 small">@(AuthService.CurrentUser?.Address ?? "Not defined")</p>
+                                <p class="m-0 small text-secondary">@AuthService.CurrentUser?.ZipCode @AuthService.CurrentUser?.City</p>
+                            </div>
+
+                            <button class="btn btn-dark btn-sm w-100 rounded-0 mt-3 fw-bold" @onclick="ToggleEdit">
+                                UPDATE PROFILE
+                            </button>
+                        }
+                        else
+                        {
+                            @* EDIT MODE: Form to update user profile details *@
+                            <h6 class="fw-bold text-uppercase mb-4" style="letter-spacing: 1px;">Edit Personal Info</h6>
+
+                            <div class="mb-3">
+                                <label class="x-small text-muted text-uppercase fw-bold">Full Name</label>
+                                <input type="text" class="form-control rounded-0 border-dark small" @bind="editName" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="x-small text-muted text-uppercase fw-bold">Phone Number</label>
+                                <input type="text" class="form-control rounded-0 border-dark small" @bind="editPhone" placeholder="(00) 00000-0000" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="x-small text-muted text-uppercase fw-bold">Shipping Address</label>
+                                <input type="text" class="form-control rounded-0 border-dark small" @bind="editAddress" placeholder="Street, Number, Apt" />
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-7">
+                                    <label class="x-small text-muted text-uppercase fw-bold">City</label>
+                                    <input type="text" class="form-control rounded-0 border-dark small" @bind="editCity" />
+                                </div>
+                                <div class="col-5">
+                                    <label class="x-small text-muted text-uppercase fw-bold">Zip Code</label>
+                                    <input type="text" class="form-control rounded-0 border-dark small" @bind="editZip" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="x-small text-muted text-uppercase fw-bold">Country</label>
+                                    <input type="text" class="form-control rounded-0 border-dark small" @bind="editCountry" />
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-black btn-sm rounded-0 w-100 fw-bold bg-black text-white" @onclick="SaveChanges">SAVE CHANGES</button>
+                                <button class="btn btn-outline-secondary btn-sm rounded-0 w-100 fw-bold" @onclick="ToggleEdit">CANCEL</button>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(statusMessage))
+                            {
+                                <p class="mt-3 x-small text-success fw-bold text-center mb-0">@statusMessage</p>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* --- RIGHT COLUMN: ORDER HISTORY --- *@
+            <div class="col-lg-8">
+                <h4 class="fw-bold text-uppercase mb-4" style="letter-spacing: 2px;">Order History</h4>
+
+                @if (userOrders == null || !userOrders.Any())
+                {
+                    @* Feedback for users with zero transactions *@
+                    <div class="p-5 border text-center bg-light">
+                        <i class="bi bi-bag-x fs-1 text-muted d-block mb-3"></i>
+                        <p class="text-muted">You haven't made any purchases yet.</p>
+                        <a href="/catalog" class="btn btn-dark btn-sm rounded-0 px-4 mt-2">SHOP NOW</a>
+                    </div>
+                }
+                else
+                {
+                    @* Iterate through historical orders retrieved from the database *@
+                    @foreach (var order in userOrders)
+                    {
+                        <div class="card border-dark rounded-0 mb-4">
+                            <div class="card-header bg-white py-3 d-flex justify-content-between">
+                                <span class="fw-bold">ORDER #@order.Id.ToString("D5")</span>
+                                <span>Total: @order.TotalAmount.ToString("C")</span>
+                            </div>
+
+                            <div class="card-body">
+                                @if (order.OrderItems != null && order.OrderItems.Any())
+                                {
+                                    @* Render each item contained within the serialized order snapshot *@
+                                    @foreach (var item in order.OrderItems)
+                                    {
+                                        <div class="d-flex align-items-center mt-3 pb-3 border-bottom">
+                                            <img src="@item.ImageUrl"
+                                                 alt="@item.ProductName"
+                                                 style="width: 80px; height: 80px; object-fit: cover;"
+                                                 class="me-3"
+                                                 onerror="this.src='/images/placeholder.png';" />
+
+                                            <div class="flex-grow-1">
+                                                <p class="mb-0 fw-bold text-uppercase">@item.ProductName</p>
+                                                <small class="text-muted d-block">
+                                                    SIZE: @item.Size | QTY: @item.Quantity
+                                                </small>
+                                                <span class="fw-bold small">@item.Price.ToString("C")</span>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted small mb-0">Order details are not available.</p>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // Local state variables for order tracking and profile editing
+    private List<Order> userOrders = new();
+    private string editName = "";
+    private string editPhone = "";
+    private string editAddress = "";
+    private string editCity = "";
+    private string editZip = "";
+    private string editCountry = "";
+    private bool isEditing = false;
+    private string statusMessage = "";
+
+    /// <summary>
+    /// Lifecycle method to load the user's order history and initialize form fields.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthService.CurrentUser != null)
+        {
+            SyncFields(); // Populate local variables with CurrentUser data
+
+            // Query orders from the database matching the user's email
+            userOrders = await DbContext.Orders
+                .Where(o => o.CustomerEmail == AuthService.CurrentUser!.Email)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync();
+
+            // Deserialize order items for each order to display product details
+            foreach (var order in userOrders)
+            {
+                if (!string.IsNullOrWhiteSpace(order.SerializedItems))
+                {
+                    try 
+                    {
+                        order.OrderItems = JsonSerializer.Deserialize<List<OrderItem>>(order.SerializedItems)
+                            ?? new List<OrderItem>();
+                    }
+                    catch { order.OrderItems = new List<OrderItem>(); }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Synchronizes local editing variables with the data currently stored in the AuthService.
+    /// </summary>
+    private void SyncFields()
+    {
+        editName = AuthService.CurrentUser?.Name ?? "";
+        editPhone = AuthService.CurrentUser?.Phone ?? "";
+        editAddress = AuthService.CurrentUser?.Address ?? "";
+        editCity = AuthService.CurrentUser?.City ?? "";
+        editZip = AuthService.CurrentUser?.ZipCode ?? "";
+        editCountry = AuthService.CurrentUser?.Country ?? "";
+    }
+
+    /// <summary>
+    /// Toggles the profile between view and edit modes.
+    /// </summary>
+    private void ToggleEdit()
+    {
+        isEditing = !isEditing;
+        if (isEditing) SyncFields();
+        statusMessage = "";
+    }
+
+    /// <summary>
+    /// Persists profile changes to the database and updates the active session.
+    /// </summary>
+    private async Task SaveChanges()
+    {
+        var userId = AuthService.CurrentUser?.Id;
+        if (userId == null) return;
+
+        // Update database record
+        var user = await DbContext.Users.FindAsync(userId);
+        if (user != null)
+        {
+            user.Name = editName;
+            user.Phone = editPhone;
+            user.Address = editAddress;
+            user.City = editCity;
+            user.ZipCode = editZip;
+            user.Country = editCountry;
+
+            await DbContext.SaveChangesAsync();
+
+            // Synchronize the current session in memory
+            AuthService.CurrentUser!.Name = editName;
+            AuthService.CurrentUser.Phone = editPhone;
+            AuthService.CurrentUser.Address = editAddress;
+            AuthService.CurrentUser.City = editCity;
+            AuthService.CurrentUser.ZipCode = editZip;
+            AuthService.CurrentUser.Country = editCountry;
+
+            statusMessage = "Profile synchronized!";
+            StateHasChanged();
+
+            // Automatic visual feedback delay
+            await Task.Delay(1000);
+            isEditing = false;
+            statusMessage = "";
+        }
+    }
+}

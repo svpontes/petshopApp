@@ -1,0 +1,164 @@
+@using PetShopApp.Models
+@inject PetShopApp.Services.CartService CartService
+
+@* --- PRODUCT QUICK VIEW COMPONENT ---
+   Purpose: Provides a side-panel (Offcanvas) for users to quickly select sizes, 
+   view images, and add products to the cart without leaving the current page.
+*@
+
+<div class="offcanvas offcanvas-end @(Show ? "show" : "")" tabindex="-1" 
+     style="visibility: @(Show ? "visible" : "hidden"); width: 450px; border-left: 1px solid #ddd;">
+    
+    <div class="offcanvas-header border-bottom">
+        <h5 class="fw-bold text-uppercase mb-0">Quick Add</h5>
+        <button type="button" class="btn-close text-reset" @onclick="Close"></button>
+    </div>
+
+    <div class="offcanvas-body">
+        @if (Product != null)
+        {
+            @* --- IMAGE CAROUSEL SECTION --- *@
+            <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    <div class="carousel-item active">
+                        <img src="@GetImageUrl(Product.ImageUrl)" class="d-block w-100 product-img" alt="@Product.Name" />
+                    </div>
+
+                    @if (Product.SecondaryImageUrls != null && Product.SecondaryImageUrls.Any())
+                    {
+                        @foreach (var img in Product.SecondaryImageUrls)
+                        {
+                            <div class="carousel-item">
+                                <img src="@GetImageUrl(img)" class="d-block w-100 product-img" alt="@Product.Name" />
+                            </div>
+                        }
+                    }
+                </div>
+
+                <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </button>
+            </div>
+
+            @* --- PRODUCT INFO --- *@
+            <h4 class="fw-bold text-uppercase mt-3">@Product.Name</h4>
+            <h5 class="text-secondary mb-3">@Product.Price.ToString("C")</h5>
+            <p class="small text-muted">@Product.Description</p>
+
+            <hr />
+
+            @* --- SIZE SELECTION LOGIC --- *@
+            <div class="mb-4">
+                <label class="fw-bold small text-uppercase mb-2">Select Size:</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    @foreach (var size in Product.AvailableSizes)
+                    {
+                        @* Toggles 'btn-dark' class if the size is currently selected *@
+                        <button class="btn @(selectedSize == size ? "btn-dark" : "btn-outline-dark") btn-sm px-3 fw-bold rounded-0" 
+                                @onclick="() => selectedSize = size">
+                            @size
+                        </button>
+                    }
+                </div>
+                @* Validation Warning if user attempts to add to bag without selecting a size *@
+                @if (showWarning) { <small class="text-danger d-block mt-1">Please select a size</small> }
+            </div>
+
+            @* --- QUANTITY SELECTOR --- *@
+            <div class="mb-4">
+                <label class="fw-bold small text-uppercase mb-2">Quantity:</label>
+                <div class="input-group" style="width: 120px;">
+                    <button class="btn btn-outline-dark btn-sm" @onclick="() => { if(qty > 1) qty--; }">-</button>
+                    <input type="text" class="form-control form-control-sm text-center border-dark" value="@qty" readonly />
+                    <button class="btn btn-outline-dark btn-sm" @onclick="() => qty++">+</button>
+                </div>
+            </div>
+
+            @* --- SUBMIT ACTION --- *@
+            <button class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 shadow-sm" @onclick="HandleAdd">
+                Add to Bag — @((Product.Price * qty).ToString("C"))
+            </button>
+        }
+    </div>
+</div>
+
+@* Background overlay for the Offcanvas panel *@
+@if (Show)
+{
+    <div class="offcanvas-backdrop fade show" @onclick="Close"></div>
+}
+
+@code {
+    // Parameters received from the parent page (Catalog)
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public Product? Product { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    // Local UI State
+    private string selectedSize = "";
+    private int qty = 1;
+    private bool showWarning = false;
+
+    /// <summary>
+    /// Resets the internal state and notifies the parent to hide the component.
+    /// </summary>
+    private void Close() { 
+        selectedSize = ""; 
+        qty = 1; 
+        showWarning = false;
+        OnClose.InvokeAsync(); 
+    }
+
+    /// <summary>
+    /// Validates null/empty URLs and returns a default placeholder image.
+    /// </summary>
+    private static string GetImageUrl(string? url)
+    {
+        return string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
+    }
+
+    /// <summary>
+    /// Validates selection and interacts with the CartService to persist the choice.
+    /// </summary>
+    private void HandleAdd() {
+        if (string.IsNullOrEmpty(selectedSize)) { showWarning = true; return; }
+        if (Product != null) {
+            CartService.AddToCart(Product, selectedSize, qty);
+            Close();
+        }
+    }
+
+    // --- HELPER METHODS FOR PARENT INTEGRATION ---
+    private List<Product> products = new();
+    private bool isPanelOpen = false;
+    private Product? selectedProduct;
+
+    protected override void OnInitialized()
+    {
+        // For testing purposes, mock products can be loaded here
+        products = MockData.GetMockProducts();
+    }
+
+    /// <summary>
+    /// Logic to trigger the panel from a list view.
+    /// </summary>
+    private void OpenQuickView(Product product)
+    {
+        selectedProduct = product;
+        isPanelOpen = true;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Cleanup logic for panel closure.
+    /// </summary>
+    private void HandleClose()
+    {
+        isPanelOpen = false;
+        selectedProduct = null;
+        StateHasChanged();
+    }
+}

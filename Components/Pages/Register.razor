@@ -1,0 +1,169 @@
+@using PetShopApp.Data
+@using PetShopApp.Models
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject PetShopApp.Services.AuthService AuthService
+@inject NavigationManager NavManager
+
+@page "/register"
+
+@* --- REGISTRATION PAGE ---
+   Purpose: Allows new users to create an account, persists data to SQLite, 
+   and automatically authenticates the user upon successful creation.
+   Security Update: Added real-time password strength validation.
+*@
+
+<div class="row justify-content-center align-items-center min-vh-100" style="margin-top: -100px;">
+    <div class="col-md-5">
+        <div class="card border-0 shadow-lg p-4 bg-black text-white rounded-0">
+            <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">Text JOIN the Page</h2>
+            
+            @* User Input Fields with Two-Way Data Binding *@
+            <div class="mb-3">
+                <label class="small fw-bold text-secondary">FULL NAME</label>
+                <input type="text" @bind="name" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" placeholder="Your Name" />
+            </div>
+
+            <div class="mb-3">
+                <label class="small fw-bold text-secondary">EMAIL</label>
+                <input type="email" @bind="email" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" placeholder="email@example.com" />
+            </div>
+
+            @* --- PASSWORD FIELD WITH REAL-TIME VALIDATION --- *@
+            <div class="mb-4">
+                <label class="small fw-bold text-secondary">PASSWORD</label>
+                <input type="password" 
+                       @bind="password"
+                       @oninput="CheckPasswordStrength" 
+                       class="form-control bg-transparent border-secondary text-white rounded-0 py-2" autocomplete="new-password" />
+                
+                @* Visual Security Checklist *@
+                <div class="mt-3 p-3 border border-secondary bg-black ">
+                    <h6 class="fw-bold text-uppercase text-white mb-2" style="font-size: 0.65rem; letter-spacing: 1px;">Security Checklist:</h6>
+                    <ul class="list-unstyled mb-0" style="font-size: 0.7rem;">
+                        <li class="@(hasMinLength ? "text-lime" : "text-white")">
+                            <i class="bi @(hasMinLength ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 8+ Characters
+                        </li>
+                        <li class="@(hasUpperCase ? "text-lime" : "text-white")">
+                            <i class="bi @(hasUpperCase ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 1 Uppercase Letter
+                        </li>
+                        <li class="@(hasNumber ? "text-lime" : "text-white")">
+                            <i class="bi @(hasNumber ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 1 Number
+                        </li>
+                        <li class="@(hasSpecialChar ? "text-lime" : "text-white")">
+                            <i class="bi @(hasSpecialChar ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 1 Special Character
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            @* Feedback for validation or database errors *@
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger bg-transparent border-danger text-danger small rounded-0 mb-3">
+                    @errorMessage
+                </div>
+            }
+
+            <button class="btn btn-light w-100 fw-bold" @onclick="HandleRegister" disabled="@isProcessing">
+                @(isProcessing ? "CREATING ACCOUNT..." : "REGISTER")
+            </button>
+
+            <div class="text-center mt-3">
+                <a href="/login" class="text-secondary small text-decoration-none hover-white">Already a member? Login here</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Local state variables for form handling
+    private string name = "";
+    private string email = "";
+    private string password = "";
+    private string errorMessage = "";
+    private bool isProcessing = false;
+
+    // Password strength state variables
+    private bool hasMinLength = false;
+    private bool hasUpperCase = false;
+    private bool hasNumber = false;
+    private bool hasSpecialChar = false;
+
+    /// <summary>
+    /// Analyzes the password input in real-time to update the UI security checklist.
+    /// </summary>
+    private void CheckPasswordStrength(ChangeEventArgs e)
+    {
+        password = e.Value?.ToString() ?? "";
+        
+        hasMinLength = password.Length >= 8;
+        hasUpperCase = password.Any(char.IsUpper);
+        hasNumber = password.Any(char.IsDigit);
+        hasSpecialChar = password.Any(ch => !char.IsLetterOrDigit(ch));
+    }
+
+    /// <summary>
+    /// Handles the user registration logic, including validation, 
+    /// duplicate checks, and database persistence.
+    /// </summary>
+    private async Task HandleRegister()
+    {
+        // 1. BASIC VALIDATION: Check for empty fields
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        {
+            errorMessage = "Please fill in all fields.";
+            return;
+        }
+
+        // 2. SECURITY VALIDATION: Ensure the password meets all criteria
+        if (!hasMinLength || !hasUpperCase || !hasNumber || !hasSpecialChar)
+        {
+            errorMessage = "Your password does not meet the security requirements.";
+            return;
+        }
+
+        isProcessing = true;
+        errorMessage = "";
+
+        try 
+        {
+            // 3. DUPLICATE CHECK: Verify if the email already exists
+            var userExists = await DbContext.Users.AnyAsync(u => u.Email == email);
+            if (userExists)
+            {
+                errorMessage = "This email is already registered.";
+                isProcessing = false;
+                return;
+            }
+
+            // 4. DATA MODELING: Create a new User entity
+            var newUser = new User
+            {
+                Name = name,
+                Email = email,
+                Password = password, // Note: In production, passwords should always be hashed
+                Role = "Customer",
+                CreatedAt = DateTime.Now
+            };
+
+            // 5. PERSISTENCE: Save record to SQLite
+            DbContext.Users.Add(newUser);
+            await DbContext.SaveChangesAsync();
+
+            // 6. AUTO-LOGIN: Authenticate immediately after sign-up
+            await AuthService.Login(email, password);
+            
+            // 7. NAVIGATION: Redirect to storefront
+            NavManager.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Error saving to database: " + ex.Message;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}

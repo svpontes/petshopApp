@@ -1,0 +1,99 @@
+@page "/admin/messages"
+@using PetShopApp.Models
+@using Microsoft.EntityFrameworkCore
+@using PetShopApp.Services
+@inject AuthService Auth
+@inject NavigationManager NavManager
+@inject ApplicationDbContext DbContext
+
+@* --- ADMIN CONTACT LOGS ---
+   Purpose: Provides a read-only historical record of all customer inquiries.
+   This serves as a legal and operational log for customer support tracking.
+*@
+
+<div class="container mt-5">
+    @* --- HEADER SECTION --- *@
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h2 class="fw-bold text-uppercase mb-4">Contact Logs (Legal Record)</h2>
+        @* Dashboard Return Button *@
+        <a href="/admin" class="btn btn-outline-dark btn-sm rounded-0 px-4 text-uppercase fw-bold">
+            <i class="bi bi-arrow-left me-2"></i> Dashboard
+        </a>
+    </div>
+</div>
+    @* --- RESPONSIVE MESSAGE LOGS --- *@
+<div class="messages-container">
+    @if (messages == null || !messages.Any())
+    {
+        <div class="alert alert-light border-dark rounded-0 text-center py-5">
+            <p class="text-muted m-0">NO MESSAGES FOUND IN THE LEDGER.</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var msg in messages)
+        {
+            @* Cada mensagem agora é um Card, o que evita o scroll horizontal no mobile *@
+            <div class="card rounded-0 border-dark mb-4 shadow-sm">
+                @* Cabeçalho do Card com Data e Assunto *@
+                <div class="card-header bg-black text-white rounded-0 d-flex justify-content-between align-items-center py-2">
+                    <span class="fw-bold x-small">@msg.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span>
+                    <span class="badge bg-secondary x-small text-uppercase">@msg.Subject</span>
+                </div>
+
+                <div class="card-body p-3">
+                    @* Info do Cliente *@
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-0 text-uppercase">@msg.Name</h6>
+                        <span class="text-primary small text-break">@msg.Email</span>
+                    </div>
+                    
+                    @* Conteúdo da Mensagem com fundo cinza claro para destaque *@
+                    <div class="p-3 bg-light border">
+                        <p class="mb-0 small text-dark" style="white-space: pre-wrap; word-break: break-word;">
+                            <strong class="x-small text-muted text-uppercase d-block mb-1">Message Content:</strong>
+                            @msg.Message
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .x-small { font-size: 0.65rem; letter-spacing: 1px; }
+    
+    /* Impede que e-mails longos quebrem o layout no mobile */
+    .text-break { word-break: break-all !important; }
+
+    /* Estilo para garantir que o container use 100% da tela sem transbordar */
+    .messages-container {
+        width: 100%;
+        overflow-x: hidden;
+    }
+</style>
+
+@code {
+    // Internal list to hold the communication records
+    private List<ContactMessage> messages = new();
+
+    /// <summary>
+    /// Lifecycle Method: Implements security checks and data retrieval.
+    /// Ensures that only authenticated Administrators can access the message logs.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. SECURITY AUDIT: Verify Admin role before proceeding
+        if (!Auth.IsAdmin)
+        {
+            NavManager.NavigateTo("/");
+            return; // Prevent data leak by terminating the execution thread
+        }
+
+        // 2. DATA RETRIEVAL: Fetch all messages sorted by the most recent entry first
+        messages = await DbContext.ContactMessages
+            .OrderByDescending(m => m.CreatedAt)
+            .ToListAsync();
+    }
+}

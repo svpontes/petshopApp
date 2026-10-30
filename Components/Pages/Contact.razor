@@ -1,0 +1,181 @@
+@using PetShopApp.Models
+@inject ApplicationDbContext DbContext
+@page "/contact"
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager NavManager
+
+@* --- CONTACT PAGE ---
+   Purpose: Provides a communication channel for users to reach out to the brand.
+   Features a validated form that saves inquiries directly to the database.
+*@
+
+<div class="container mt-5 pt-5 pb-5">
+    <div class="row g-5">
+        @* --- LEFT COLUMN: CONTACT INFORMATION --- *@
+        <div class="col-lg-4">
+            <h2 class="fw-bold text-uppercase mb-4" style="letter-spacing: 3px;">Get in Touch</h2>
+            <p class="text-secondary mb-5">Have a question about a drop or a custom PNG art? Drop us a line.</p>
+            
+            @* Visual contact details using standard brand typography *@
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase">Email</h6>
+                <p class="text-dark">text for email company</p>
+            </div>
+            
+            <div class="mb-4">
+                <h6 class="fw-bold text-uppercase">text for studio address</h6>
+                <p class="text-secondary small">text for address<br />Available 24/7 Online</p>
+            </div>
+
+            @* Social Media integration via Bootstrap Icons *@
+            <div class="d-flex gap-3 mt-4">
+                <a href="#" class="text-dark fs-4"><i class="bi bi-instagram"></i></a>
+                <a href="#" class="text-dark fs-4"><i class="bi bi-twitter-x"></i></a>
+                <a href="#" class="text-dark fs-4"><i class="bi bi-tiktok"></i></a>
+            </div>
+        </div>
+
+        @* --- RIGHT COLUMN: CONTACT FORM --- *@
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-0 p-4 p-md-5">
+                @* EditForm: Blazor's built-in component for handling form state.
+                   OnValidSubmit: Only executes HandleSubmit if all validation rules are met.
+                *@
+                <EditForm Model="@contactModel" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    
+                    <div class="row">
+                        @* Name Input with Validation Feedback *@
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label fw-bold text-uppercase small">Your Name</label>
+                            <InputText class="form-control rounded-0 border-dark-subtle py-2" @bind-Value="contactModel.Name" placeholder="Full Name" />
+                            <ValidationMessage For="@(() => contactModel.Name)" class="text-danger small" />
+                        </div>
+                        
+                        @* Email Input with type-specific validation *@
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label fw-bold text-uppercase small">Email Address</label>
+                            <InputText class="form-control rounded-0 border-dark-subtle py-2" @bind-Value="contactModel.Email" placeholder="email@example.com" />
+                            <ValidationMessage For="@(() => contactModel.Email)" class="text-danger small" />
+                        </div>
+                    </div>
+
+                    @* Subject Dropdown Selection *@
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-uppercase small">Subject</label>
+                        <InputSelect class="form-select rounded-0 border-dark-subtle py-2" @bind-Value="contactModel.Subject">
+                            <option value="">Select a topic...</option>
+                            <option value="Order Status">Order Status</option>
+                            <option value="PNG Arts">PNG Arts Support</option>
+                            <option value="Collaboration">Collaboration</option>
+                            <option value="Other">Other</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => contactModel.Subject)" class="text-danger small" />
+                    </div>
+
+                    @* Message Area with length constraints *@
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-uppercase small">Message</label>
+                        <InputTextArea class="form-control rounded-0 border-dark-subtle" rows="5" @bind-Value="contactModel.Message" placeholder="How can we help you?" />
+                        <ValidationMessage For="@(() => contactModel.Message)" class="text-danger small" />
+                    </div>
+
+                    @* Success Feedback: Rendered conditionally with pure black background and white text *@
+                    @if (showSuccessMessage)
+                    {
+                        <div class="bg-black text-white p-3 mb-4 rounded-0 d-flex align-items-center animate__animated animate__fadeIn">
+                            <i class="bi bi-check2-all me-2 fs-5"></i> 
+                            <span class="fw-bold small text-uppercase" style="letter-spacing: 1px;">
+                                Message sent! We'll get back to you soon.
+                            </span>
+                        </div>
+                    }
+
+                    <button type="submit" class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 transition-hover">
+                        Send Message
+                    </button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Local instance of the form model to hold user inputs
+    private ContactForm contactModel = new();
+    private bool showSuccessMessage = false;
+
+    /// <summary>
+    /// Processes the form submission: maps DTO to Database entity and persists the record.
+    /// </summary>
+    private async Task HandleSubmit()
+    {
+        try 
+        {
+            // 1. DATA MAPPING: Create a database entity from the form model
+            var newMessage = new ContactMessage 
+            {
+                Name = contactModel.Name,
+                Email = contactModel.Email,
+                Subject = contactModel.Subject,
+                Message = contactModel.Message,
+                CreatedAt = DateTime.Now // Essential for tracking and audit logs
+            };
+
+            // 2. PERSISTENCE: Add the message to the EF context and save to SQLite file
+            DbContext.ContactMessages.Add(newMessage);
+            await DbContext.SaveChangesAsync();
+
+            // 3. UI STATE MANAGEMENT: Show success feedback and reset the form
+            showSuccessMessage = true;
+            contactModel = new(); 
+        }
+        catch (Exception ex)
+        {
+            // Technical logging for database or network failure
+            Console.WriteLine($"Critical error saving contact message: {ex.Message}");
+        }
+
+        StateHasChanged(); // Force UI refresh
+
+        // 4. FEEDBACK EXPIRY: Hide the success alert after 5 seconds
+        await Task.Delay(5000);
+        showSuccessMessage = false;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Data Transfer Object (DTO) for the contact form with validation attributes.
+    /// </summary>
+    public class ContactForm
+    {
+        [Required(ErrorMessage = "Please tell us your name.")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Invalid email format.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please select a subject.")]
+        public string Subject { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "The message cannot be empty.")]
+        [StringLength(1000, MinimumLength = 10, ErrorMessage = "Message must be between 10 and 1000 characters.")]
+        public string Message { get; set; } = string.Empty;
+    }
+}
+
+<style>
+    /* Styling for the focus state of form elements */
+    .form-control:focus, .form-select:focus {
+        border-color: #000;
+        box-shadow: none;
+    }
+
+    /* Interactive hover animation for the submission button */
+    .transition-hover:hover {
+        background-color: #333;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+</style>
