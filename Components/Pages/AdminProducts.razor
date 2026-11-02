@@ -6,6 +6,7 @@
 @inject NavigationManager NavManager
 @inject AuthService AuthService
 @rendermode InteractiveServer
+@using PetShopApp.Data
 
 @* --- ADMIN PRODUCT MANAGEMENT ---
    Purpose: Centralized dashboard for administrators to manage the shirt inventory.
@@ -52,7 +53,8 @@
                             <label class="form-label small fw-bold">Primary Image Path
                                
                             </label>
-                            <InputText @bind-Value="editingProduct.ImageUrl" class="form-control rounded-0" placeholder="/images/imageF1.png" />
+                            <InputText @bind-Value="editingProduct.ImageUrl" class="form-control rounded-0"
+                                       placeholder="/images/imageF1.png" />
                         </div>
 
                         @* Image Gallery Management: Uses a raw string processed by new lines *@
@@ -94,9 +96,7 @@
                 @* Live Search Filter *@
                 <div class="row g-2 mb-3">
                     <div class="col-md-8">
-                        <input class="form-control rounded-0"
-                               @bind="searchTerm"
-                               @bind:event="oninput"
+                        <input class="form-control rounded-0" @bind="searchTerm" @bind:event="oninput"
                                placeholder="Search product..." />
                     </div>
 
@@ -126,8 +126,7 @@
                                 <tr @key="p.Id">
                                     <td>@p.Id</td>
                                     <td>
-                                        <img src="@GetImageUrl(p.ImageUrl)"
-                                             alt="@p.Name"
+                                        <img src="@GetImageUrl(p.ImageUrl)" alt="@p.Name"
                                              style="width:50px;height:50px;object-fit:cover;display:block;background-color:#f8f9fa;"
                                              onerror="this.onerror=null;this.src='/images/placeholder.png';" />
                                     </td>
@@ -211,7 +210,7 @@
     }
 
     /// <summary>
-    /// Persists changes to the SQLite database. Handles both new entry insertion 
+    /// Persists changes to the SQLite database. Handles both new entry insertion
     /// and existing entry updates.
     /// </summary>
     private async Task SaveProduct()

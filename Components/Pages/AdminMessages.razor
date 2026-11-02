@@ -2,6 +2,7 @@
 @using PetShopApp.Models
 @using Microsoft.EntityFrameworkCore
 @using PetShopApp.Services
+@using PetShopApp.Data
 @inject AuthService Auth
 @inject NavigationManager NavManager
 @inject ApplicationDbContext DbContext
@@ -21,7 +22,7 @@
         </a>
     </div>
 </div>
-    @* --- RESPONSIVE MESSAGE LOGS --- *@
+@* --- RESPONSIVE MESSAGE LOGS --- *@
 <div class="messages-container">
     @if (messages == null || !messages.Any())
     {
@@ -62,10 +63,15 @@
 </div>
 
 <style>
-    .x-small { font-size: 0.65rem; letter-spacing: 1px; }
+    .x-small {
+        font-size: 0.65rem;
+        letter-spacing: 1px;
+    }
     
     /* Impede que e-mails longos quebrem o layout no mobile */
-    .text-break { word-break: break-all !important; }
+    .text-break {
+        word-break: break-all !important;
+    }
 
     /* Estilo para garantir que o container use 100% da tela sem transbordar */
     .messages-container {

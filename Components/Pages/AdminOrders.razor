@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using PetShopApp.Services
+@using PetShopApp.Data
 @inject AuthService Auth
 @inject NavigationManager NavManager
 @inject ApplicationDbContext DbContext
@@ -44,62 +45,64 @@
                     <div class="row">
                         @* --- COLUMN 1: CUSTOMER LOGISTICS --- *@
                         <div class="col-md-6 border-end">
-                            <h6 class="fw-bold text-uppercase x-small text-muted mb-3" style="letter-spacing: 1px;">Customer Details</h6>
-                            <p class="mb-1"><strong>@order.CustomerName</strong></p>
-                            <p class="mb-1 small text-primary">@order.CustomerEmail</p>
-                            <p class="small text-secondary mt-2">@order.ShippingAddress</p>
-                        </div>
+                            <h6 class="fw-bold text-uppercase x-small text-muted mb-3" style="letter-spacing: 1px;">Customer
+                                Details</h6>
+                                <p class="mb-1"><strong>@order.CustomerName</strong></p>
+                                <p class="mb-1 small text-primary">@order.CustomerEmail</p>
+                                <p class="small text-secondary mt-2">@order.ShippingAddress</p>
+                            </div>
 
-                        @* --- COLUMN 2: TRANSACTION ITEMS --- *@
-                        <div class="col-md-6 px-md-4 mt-4 mt-md-0">
-                            <h6 class="fw-bold text-uppercase x-small text-muted mb-3" style="letter-spacing: 1px;">Items Purchased</h6>
+                            @* --- COLUMN 2: TRANSACTION ITEMS --- *@
+                            <div class="col-md-6 px-md-4 mt-4 mt-md-0">
+                                <h6 class="fw-bold text-uppercase x-small text-muted mb-3" style="letter-spacing: 1px;">Items
+                                    Purchased</h6>
                             
-                            <ul class="list-unstyled">
-                                @try 
-                                {
-                                    @* DESERIALIZATION LOGIC: 
+                                    <ul class="list-unstyled">
+                                        @try
+                                        {
+                                            @* DESERIALIZATION LOGIC: 
                                        Converts the JSON string stored in SQLite back into a readable list of items.
                                     *@
-                                    if (!string.IsNullOrEmpty(order.SerializedItems))
-                                    {
-                                        var items = JsonSerializer.Deserialize<List<OrderItemSummary>>(order.SerializedItems);
-                                        if (items != null)
-                                        {
-                                            foreach (var item in items)
+                                            if (!string.IsNullOrEmpty(order.SerializedItems))
                                             {
-                                                <li class="d-flex justify-content-between border-bottom pb-2 mb-2 small">
-                                                    <span>
-                                                        <span class="fw-bold text-dark">@item.Quantity x</span> @item.Name 
-                                                        <span class="badge bg-dark rounded-0 ms-1" style="font-size: 0.6rem;">@item.Size</span>
-                                                    </span>
-                                                    <span class="fw-bold">@((item.PriceAtPurchase * item.Quantity).ToString("C"))</span>
-                                                </li>
+                                                var items = JsonSerializer.Deserialize<List<OrderItemSummary>>(order.SerializedItems);
+                                                if (items != null)
+                                                {
+                                                    foreach (var item in items)
+                                                    {
+                                                        <li class="d-flex justify-content-between border-bottom pb-2 mb-2 small">
+                                                            <span>
+                                                                <span class="fw-bold text-dark">@item.Quantity x</span> @item.Name
+                                                                <span class="badge bg-dark rounded-0 ms-1" style="font-size: 0.6rem;">@item.Size</span>
+                                                            </span>
+                                                            <span class="fw-bold">@((item.PriceAtPurchase * item.Quantity).ToString("C"))</span>
+                                                        </li>
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <li class="text-danger small">No item data found (Legacy Order).</li>
                                             }
                                         }
-                                    }
-                                    else
-                                    {
-                                        <li class="text-danger small">No item data found (Legacy Order).</li>
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    <li class="text-muted small">Error loading items: @ex.Message</li>
-                                }
-                            </ul>
+                                        catch (Exception ex)
+                                        {
+                                            <li class="text-muted small">Error loading items: @ex.Message</li>
+                                        }
+                                    </ul>
 
-                            @* Financial Summary for the specific order *@
-                            <div class="d-flex justify-content-between mt-3 pt-2 border-top">
-                                <span class="fw-bold text-uppercase small">Grand Total:</span>
-                                <span class="h5 fw-bold text-dark">@order.TotalAmount.ToString("C")</span>
+                                    @* Financial Summary for the specific order *@
+                                    <div class="d-flex justify-content-between mt-3 pt-2 border-top">
+                                        <span class="fw-bold text-uppercase small">Grand Total:</span>
+                                        <span class="h5 fw-bold text-dark">@order.TotalAmount.ToString("C")</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        }
-    }
-</div>
+                }
+            }
+        </div>
 
 @code {
     private List<Order> orders = new();
@@ -125,7 +128,7 @@
         if (!Auth.IsAdmin)
         {
             NavManager.NavigateTo("/");
-            return; 
+            return;
         }
 
         // 2. Database query: Order history retrieved in descending chronological order
@@ -136,5 +139,7 @@
 }
 
 <style>
-    .x-small { font-size: 0.65rem; }
+    .x-small {
+        font-size: 0.65rem;
+    }
 </style>

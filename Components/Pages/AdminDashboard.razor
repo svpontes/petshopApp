@@ -1,6 +1,7 @@
 @page "/admin"
 @using Microsoft.EntityFrameworkCore
 @using PetShopApp.Services
+@using PetShopApp.Data
 @inject AuthService Auth
 @inject NavigationManager NavManager
 @inject ApplicationDbContext DbContext
@@ -31,7 +32,8 @@
                         <div class="d-flex justify-content-between align-items-center">
                             @* Aggregate count of all orders in the system *@
                             <span class="h5 m-0 fw-bold">@totalOrders</span>
-                            <a href="/admin/orders" class="btn btn-dark btn-sm rounded-0 px-3 text-uppercase fw-bold">Open Ledger</a>
+                            <a href="/admin/orders"
+                               class="btn btn-dark btn-sm rounded-0 px-3 text-uppercase fw-bold">Open Ledger</a>
                         </div>
                     </div>
                 </div>
@@ -53,7 +55,8 @@
                         <div class="d-flex justify-content-between align-items-center">
                             @* Aggregate count of contact form submissions *@
                             <span class="h5 m-0 fw-bold">@totalMessages</span>
-                            <a href="/admin/messages" class="btn btn-dark btn-sm rounded-0 px-3 text-uppercase fw-bold">View Logs</a>
+                            <a href="/admin/messages"
+                               class="btn btn-dark btn-sm rounded-0 px-3 text-uppercase fw-bold">View Logs</a>
                         </div>
                     </div>
                 </div>
@@ -75,7 +78,8 @@
                         <div class="d-flex justify-content-between align-items-center">
                             @* Current size of the marketing mailing list *@
                             <span class="h5 m-0 fw-bold">@subscriberCount</span>
-                            <a href="/admin/subscribers" class="btn btn-light btn-sm rounded-0 px-3 text-uppercase fw-bold">Manage List</a>
+                            <a href="/admin/subscribers"
+                               class="btn btn-light btn-sm rounded-0 px-3 text-uppercase fw-bold">Manage List</a>
                         </div>
                     </div>
                 </div>
@@ -123,7 +127,7 @@
     }
 
     /// <summary>
-    /// DATA INITIALIZATION: Performs aggregate queries to calculate 
+    /// DATA INITIALIZATION: Performs aggregate queries to calculate
     /// the summary metrics displayed on the dashboard cards.
     /// </summary>
     protected override async Task OnInitializedAsync()
@@ -144,9 +148,20 @@
 
 <style>
     /* Styling for the branded x-small labels */
-    .x-small { font-size: 0.65rem; letter-spacing: 1.5px; }
+    .x-small {
+        font-size: 0.65rem;
+        letter-spacing: 1.5px;
+    }
 
     /* Interactive UI effects to make the dashboard feel responsive */
-    .transition-card { transition: all 0.3s ease; border: 1px solid #dee2e6; }
-    .transition-card:hover { transform: translateY(-5px); border-color: #000; box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    .transition-card {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+
+    .transition-card:hover {
+        transform: translateY(-5px);
+        border-color: #000;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
 </style>

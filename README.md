@@ -1,3 +1,5 @@
+Rebecca's Favorite Quote: "You'll just go home and be bored and neglected, same as always.."
+
 # PetShopApp
 
 A pet products e-commerce web application developed collaboratively for the team members CSE499 course.
