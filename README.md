@@ -130,3 +130,8 @@ Christian Peraza
 
 > "... a mind needs books as a sword needs a whetstone, if it is to keep its edge."
 > (George R. R. Martin, _A Game of Thrones_).
+
+Rebecca's Sonderegger
+
+> "... You'll just go home and be bored and neglected, same as always.."
+> (Coraline)

@@ -3,6 +3,7 @@
 @page "/contact"
 @using System.ComponentModel.DataAnnotations
 @inject NavigationManager NavManager
+@using PetShopApp.Data
 
 @* --- CONTACT PAGE ---
    Purpose: Provides a communication channel for users to reach out to the brand.
@@ -48,14 +49,16 @@
                         @* Name Input with Validation Feedback *@
                         <div class="col-md-6 mb-4">
                             <label class="form-label fw-bold text-uppercase small">Your Name</label>
-                            <InputText class="form-control rounded-0 border-dark-subtle py-2" @bind-Value="contactModel.Name" placeholder="Full Name" />
+                            <InputText class="form-control rounded-0 border-dark-subtle py-2"
+                                       @bind-Value="contactModel.Name" placeholder="Full Name" />
                             <ValidationMessage For="@(() => contactModel.Name)" class="text-danger small" />
                         </div>
                         
                         @* Email Input with type-specific validation *@
                         <div class="col-md-6 mb-4">
                             <label class="form-label fw-bold text-uppercase small">Email Address</label>
-                            <InputText class="form-control rounded-0 border-dark-subtle py-2" @bind-Value="contactModel.Email" placeholder="email@example.com" />
+                            <InputText class="form-control rounded-0 border-dark-subtle py-2"
+                                       @bind-Value="contactModel.Email" placeholder="email@example.com" />
                             <ValidationMessage For="@(() => contactModel.Email)" class="text-danger small" />
                         </div>
                     </div>
@@ -63,7 +66,8 @@
                     @* Subject Dropdown Selection *@
                     <div class="mb-4">
                         <label class="form-label fw-bold text-uppercase small">Subject</label>
-                        <InputSelect class="form-select rounded-0 border-dark-subtle py-2" @bind-Value="contactModel.Subject">
+                        <InputSelect class="form-select rounded-0 border-dark-subtle py-2"
+                                     @bind-Value="contactModel.Subject">
                             <option value="">Select a topic...</option>
                             <option value="Order Status">Order Status</option>
                             <option value="PNG Arts">PNG Arts Support</option>
@@ -76,22 +80,25 @@
                     @* Message Area with length constraints *@
                     <div class="mb-4">
                         <label class="form-label fw-bold text-uppercase small">Message</label>
-                        <InputTextArea class="form-control rounded-0 border-dark-subtle" rows="5" @bind-Value="contactModel.Message" placeholder="How can we help you?" />
+                        <InputTextArea class="form-control rounded-0 border-dark-subtle" rows="5"
+                                       @bind-Value="contactModel.Message" placeholder="How can we help you?" />
                         <ValidationMessage For="@(() => contactModel.Message)" class="text-danger small" />
                     </div>
 
                     @* Success Feedback: Rendered conditionally with pure black background and white text *@
                     @if (showSuccessMessage)
                     {
-                        <div class="bg-black text-white p-3 mb-4 rounded-0 d-flex align-items-center animate__animated animate__fadeIn">
-                            <i class="bi bi-check2-all me-2 fs-5"></i> 
+                        <div
+                            class="bg-black text-white p-3 mb-4 rounded-0 d-flex align-items-center animate__animated animate__fadeIn">
+                            <i class="bi bi-check2-all me-2 fs-5"></i>
                             <span class="fw-bold small text-uppercase" style="letter-spacing: 1px;">
                                 Message sent! We'll get back to you soon.
                             </span>
                         </div>
                     }
 
-                    <button type="submit" class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 transition-hover">
+                    <button type="submit"
+                            class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 transition-hover">
                         Send Message
                     </button>
                 </EditForm>
@@ -110,10 +117,10 @@
     /// </summary>
     private async Task HandleSubmit()
     {
-        try 
+        try
         {
             // 1. DATA MAPPING: Create a database entity from the form model
-            var newMessage = new ContactMessage 
+            var newMessage = new ContactMessage
             {
                 Name = contactModel.Name,
                 Email = contactModel.Email,
@@ -128,7 +135,7 @@
 
             // 3. UI STATE MANAGEMENT: Show success feedback and reset the form
             showSuccessMessage = true;
-            contactModel = new(); 
+            contactModel = new();
         }
         catch (Exception ex)
         {
@@ -167,7 +174,8 @@
 
 <style>
     /* Styling for the focus state of form elements */
-    .form-control:focus, .form-select:focus {
+    .form-control:focus,
+    .form-select:focus {
         border-color: #000;
         box-shadow: none;
     }
