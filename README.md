@@ -137,5 +137,19 @@ Rebecca's Sonderegger
 > (Coraline)
 
 Sergio Pontes
+
 > "...Never let a problem to be solved become more important than a person to be loved."
 >(Finding Joy in the Journey By President Thomas S. Monson)
+
+### Restore dependencies and local tools
+
+From the repository root, run:
+
+```powershell
+dotnet restore .\PetShopApp.csproj
+dotnet tool restore
+dotnet tool run dotnet-ef --version
+```
+
+The last command should display `10.0.14`. Run these commands after cloning
+the repository or when package references or the tool manifest change.
