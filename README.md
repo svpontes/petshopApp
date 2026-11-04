@@ -135,3 +135,16 @@ Rebecca's Sonderegger
 
 > "... You'll just go home and be bored and neglected, same as always.."
 > (Coraline)
+
+### Restore dependencies and local tools
+
+From the repository root, run:
+
+```powershell
+dotnet restore .\PetShopApp.csproj
+dotnet tool restore
+dotnet tool run dotnet-ef --version
+```
+
+The last command should display `10.0.14`. Run these commands after cloning
+the repository or when package references or the tool manifest change.
