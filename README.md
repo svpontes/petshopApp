@@ -141,6 +141,11 @@ Sergio Pontes
 > "...Never let a problem to be solved become more important than a person to be loved."
 >(Finding Joy in the Journey By President Thomas S. Monson)
 
+Steven Kemendics
+
+> "... You call me a misanthrope, Because I avoid the company of others. You are mistaken, I love them. But in order not to hate people, I must refrain from their presents."
+> (Casper David Friedrich)
+
 ### Restore dependencies and local tools
 
 From the repository root, run:
