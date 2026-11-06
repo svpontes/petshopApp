@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+# Local SQLite database and DB Browser project
+/petshop.dev.db
+/petshop.dev.db-wal
+/petshop.dev.db-shm
+/petshop.dev.sqbpro

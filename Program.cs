@@ -1,7 +1,7 @@
 using PetShopApp.Components;
 using Microsoft.EntityFrameworkCore;
 using PetShopApp.Data;
-
+using PetShopApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +17,8 @@ var connectionString = builder.Configuration.GetConnectionString("PetShopDatabas
 //Register a factory so services can create a fresh SQlite context for each operation.(SP)
 builder.Services.AddDbContextFactory<ApplicationDbContext>(
     options => options.UseSqlite(connectionString));  
+    
+builder.Services.AddScoped<AuthService>();
 
 var app = builder.Build();
 
