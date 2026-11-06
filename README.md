@@ -143,8 +143,8 @@ Sergio Pontes
 
 Steven Kemendics
 
-> "... You call me a misanthrope, Because I avoid the company of others. You are mistaken, I love them. But in order not to hate people, I must refrain from their presents."
-> (Casper David Friedrich)
+"... You call me a misanthrope, Because I avoid the company of others. You are mistaken, I love them. But in order not to hate people, I must refrain from their presents." (Casper David Friedrich)
+
 
 ### Restore dependencies and local tools
 
@@ -158,3 +158,27 @@ dotnet tool run dotnet-ef --version
 
 The last command should display `10.0.14`. Run these commands after cloning
 the repository or when package references or the tool manifest change.
+
+
+### Set up the local SQLite database
+
+After restoring the NuGet packages and local .NET tools, run these commands
+from the project folder in PowerShell:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:DOTNET_ENVIRONMENT = "Development"
+
+dotnet tool run dotnet-ef database update --project .\PetShopApp.csproj --context ApplicationDbContext
+```
+
+Run this command after cloning the repository and whenever you pull new
+migrations. It creates or updates your local `petshop.dev.db` and adds the
+initial catalog options: Dog, Cat, Food, Accessories, and Toys.
+
+Keep the local database and its auxiliary files out of Git. Test accounts
+and products created on one developer's machine are not shared with the team.
+
+To test product management, sign in with a local account that has the `Admin`
+role and select **Manage Products** from the admin dashboard. New accounts
+created through the registration page have the `Customer` role by default.
