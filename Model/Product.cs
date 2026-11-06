@@ -3,46 +3,40 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace PetShopApp.Models
 {
     /// <summary>
-    /// Represents a product in the catalog, including its pricing,
-    /// descriptions, and image management logic.
+    /// Represents a product in the catalog.
     /// </summary>
     public class Product
     {
-        // Unique identifier for the product (Primary Key)
         public int Id { get; set; }
 
-        // The display name of the product
         public string Name { get; set; } = string.Empty;
 
-        // Detailed marketing or technical description of the product
         public string Description { get; set; } = string.Empty;
 
-        // Product category, such as Clothing, Mugs, or Books
-        public string Category { get; set; } = string.Empty;
+        // Foreign key identifying the animal type this product is intended for.
+        public int AnimalTypeId { get; set; }
 
-        // Retail price of the item
+        // Navigation property providing access to the related animal type.
+        public AnimalType AnimalType { get; set; } = null!;
+
+        // Keep the existing text category while the catalog is being updated.
+        public string Category { get; set; } = string.Empty;
+        
+        // Identifies the category linked to this product.
+        public int? CategoryId {get; set;}
+        // Provides access to the related category.
+        public Category? ProductCategory { get; set; }
+        
         public decimal Price { get; set; }
 
-        // Main thumbnail or primary image URL
         public string ImageUrl { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Raw string storage for secondary images.
-        /// Since SQLite does not natively support lists, multiple URLs are
-        /// stored as a single string separated by newline characters.
-        /// </summary>
+        // Stores secondary image URLs separated by newlines.
         public string SecondaryImageUrlsRaw { get; set; } = string.Empty;
 
-        // List of sizes (e.g., S, M, L, XL) available for the product.
-        // [NotMapped] prevents Entity Framework from creating a column for this list.
         [NotMapped]
         public List<string> AvailableSizes { get; set; } = new();
 
-        /// <summary>
-        /// Logic-driven property to handle secondary image URLs.
-        /// It acts as a bridge between the raw database string and a C# List.
-        /// [NotMapped] ensures this helper property is ignored during database migrations.
-        /// </summary>
         [NotMapped]
         public List<string> SecondaryImageUrls
         {
@@ -53,8 +47,8 @@ namespace PetShopApp.Models
                     .ToList();
 
             set => SecondaryImageUrlsRaw = value == null || !value.Any()
-                ? string.Empty
-                : string.Join("\n", value);
+            ? string.Empty
+            : string.Join("\n", value);
         }
     }
 }

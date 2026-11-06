@@ -73,7 +73,36 @@
                             <label class="form-label small fw-bold">Description</label>
                             <InputTextArea @bind-Value="editingProduct.Description" class="form-control rounded-0" />
                         </div>
+                        <div class="col-md-6">
+                            <label for="animal-type" class="form-label small fw-bold">Animal Type</label>
+                            <InputSelect id="animal-type" @bind-Value="editingProduct.AnimalTypeId"
+                                        class="form-select rounded-0">
+                                <option value="0">Select an animal type</option>
+                                @foreach (var animal in animalTypes)
+                                {
+                                    <option value="@animal.Id">@animal.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
 
+                        <div class="col-md-6">
+                            <label for="product-category" class="form-label small fw-bold">Category</label>
+                            <InputSelect id="product-category" @bind-Value="editingProduct.CategoryId"
+                                        class="form-select rounded-0">
+                                <option value="">No category selected</option>
+                                @foreach (var category in categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(productError))
+                        {
+                            <div class="col-12">
+                                <div class="alert alert-danger mb-0" role="alert">@productError</div>
+                            </div>
+                        }
                         @* Action Buttons for the Form *@
                         <div class="col-12 d-flex gap-2">
                             <button type="submit" class="btn btn-dark rounded-0">
@@ -159,6 +188,9 @@
 
 @code {
     private List<Product> products = new();
+    private List<AnimalType> animalTypes = new();
+    private List<Category> categories = new();
+    private string productError = "";
     private Product editingProduct = new();
     private string searchTerm = "";
     private string secondaryImagesText = "";
@@ -182,6 +214,13 @@
             NavManager.NavigateTo("/");
             return;
         }
+        animalTypes = await DbContext.AnimalTypes
+        .OrderBy(animal => animal.Name)
+        .ToListAsync();
+
+        categories = await DbContext.Categories
+        .OrderBy(category => category.Name)
+        .ToListAsync();
         await LoadProducts();
     }
 
@@ -195,18 +234,23 @@
     /// </summary>
     private Task EditProduct(Product p)
     {
-        editingProduct = new Product
-        {
-            Id = p.Id,
-            Name = p.Name,
-            Description = p.Description,
-            Price = p.Price,
-            ImageUrl = p.ImageUrl,
-            SecondaryImageUrlsRaw = p.SecondaryImageUrlsRaw
-        };
+    editingProduct = new Product
+    {
+        Id = p.Id,
+        Name = p.Name,
+        Description = p.Description,
+        Price = p.Price,
+        ImageUrl = p.ImageUrl,
+        SecondaryImageUrlsRaw = p.SecondaryImageUrlsRaw,
+        AnimalTypeId = p.AnimalTypeId,
+        CategoryId = p.CategoryId,
+        Category = p.Category
+    };
 
-        secondaryImagesText = p.SecondaryImageUrlsRaw ?? "";
-        return Task.CompletedTask;
+    secondaryImagesText = p.SecondaryImageUrlsRaw ?? "";
+    productError = "";
+
+    return Task.CompletedTask;
     }
 
     /// <summary>
@@ -215,6 +259,26 @@
     /// </summary>
     private async Task SaveProduct()
     {
+        productError = "";
+
+        if (!animalTypes.Any(animal => animal.Id == editingProduct.AnimalTypeId))
+        {
+            productError = "Select an animal type before saving.";
+            return;
+        }
+
+        if (editingProduct.CategoryId is int categoryId)
+        {
+            var category = categories.FirstOrDefault(item => item.Id == categoryId);
+
+            if (category is null)
+            {
+                productError = "Select a valid category.";
+                return;
+            }
+
+            editingProduct.Category = category.Name;
+        }
         editingProduct.SecondaryImageUrlsRaw = secondaryImagesText?.Trim() ?? "";
 
         if (string.IsNullOrWhiteSpace(editingProduct.ImageUrl))
@@ -231,6 +295,9 @@
 
             dbProduct.Name = editingProduct.Name;
             dbProduct.Description = editingProduct.Description;
+            dbProduct.AnimalTypeId = editingProduct.AnimalTypeId;
+            dbProduct.CategoryId = editingProduct.CategoryId;
+            dbProduct.Category = editingProduct.Category;
             dbProduct.Price = editingProduct.Price;
             dbProduct.ImageUrl = editingProduct.ImageUrl;
             dbProduct.SecondaryImageUrlsRaw = editingProduct.SecondaryImageUrlsRaw;
