@@ -19,6 +19,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
     options => options.UseSqlite(connectionString));  
     
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<CartService>();
 
 var app = builder.Build();
 
