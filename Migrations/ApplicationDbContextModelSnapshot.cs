@@ -177,6 +177,10 @@ namespace PetShopApp.Migrations
                     b.Property<int>("AnimalTypeId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AvailableOptionsRaw")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -189,6 +193,10 @@ namespace PetShopApp.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MoreInformation")
                         .IsRequired()
                         .HasColumnType("TEXT");
 

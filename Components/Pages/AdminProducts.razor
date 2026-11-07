@@ -73,6 +73,15 @@
                             <label class="form-label small fw-bold">Description</label>
                             <InputTextArea @bind-Value="editingProduct.Description" class="form-control rounded-0" />
                         </div>
+                        <div class="col-12">
+                        <label for="more-information" class="form-label small fw-bold">
+                            More Information
+                        </label>
+                        <InputTextArea id="more-information"
+                                    class="form-control rounded-0"
+                                    rows="4"
+                                    @bind-Value="editingProduct.MoreInformation" />
+                        </div>
                         <div class="col-md-6">
                             <label for="animal-type" class="form-label small fw-bold">Animal Type</label>
                             <InputSelect id="animal-type" @bind-Value="editingProduct.AnimalTypeId"
@@ -100,9 +109,23 @@
                         @if (!string.IsNullOrEmpty(productError))
                         {
                             <div class="col-12">
-                                <div class="alert alert-danger mb-0" role="alert">@productError</div>
+                                <div class="alert alert-danger mb-0" role="alert">
+                                    @productError
+                                </div>
                             </div>
                         }
+                        <div class="col-12">
+                                <label for="product-options" class="form-label small fw-bold">
+                                    Product Options
+                                </label>
+                                <InputText id="product-options"
+                                        class="form-control rounded-0"
+                                        @bind-Value="editingProduct.AvailableOptionsRaw"
+                                        placeholder="2.2 lb, 11 lb, 22 lb, 44 lb" />
+                                <small class="text-muted">
+                                    Separate options with commas. Leave blank if the product has no options.
+                                </small>
+                            </div>
                         @* Action Buttons for the Form *@
                         <div class="col-12 d-flex gap-2">
                             <button type="submit" class="btn btn-dark rounded-0">
@@ -244,7 +267,8 @@
         SecondaryImageUrlsRaw = p.SecondaryImageUrlsRaw,
         AnimalTypeId = p.AnimalTypeId,
         CategoryId = p.CategoryId,
-        Category = p.Category
+        Category = p.Category,
+        AvailableOptionsRaw = p.AvailableOptionsRaw
     };
 
     secondaryImagesText = p.SecondaryImageUrlsRaw ?? "";
@@ -295,12 +319,15 @@
 
             dbProduct.Name = editingProduct.Name;
             dbProduct.Description = editingProduct.Description;
+            dbProduct.MoreInformation = editingProduct.MoreInformation;
             dbProduct.AnimalTypeId = editingProduct.AnimalTypeId;
             dbProduct.CategoryId = editingProduct.CategoryId;
             dbProduct.Category = editingProduct.Category;
             dbProduct.Price = editingProduct.Price;
             dbProduct.ImageUrl = editingProduct.ImageUrl;
             dbProduct.SecondaryImageUrlsRaw = editingProduct.SecondaryImageUrlsRaw;
+            dbProduct.SecondaryImageUrlsRaw = editingProduct.SecondaryImageUrlsRaw;
+            dbProduct.AvailableOptionsRaw = editingProduct.AvailableOptionsRaw;
         }
 
         await DbContext.SaveChangesAsync();
