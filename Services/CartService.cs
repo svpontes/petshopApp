@@ -17,8 +17,8 @@ namespace PetShopApp.Services
         // Event triggered whenever the cart content changes to update the UI
         public event Action? OnChange;
 
-        // Exposes the list of items in the cart
-        public List<CartItem> CartItems => _cartItems;
+        // Provides a read-only view of the cart items.
+        public IReadOnlyList<CartItem> CartItems => _cartItems.AsReadOnly();
 
         // Calculates the total number of individual items in the cart
         public int TotalItems => _cartItems.Sum(i => i.Quantity);
@@ -30,25 +30,25 @@ namespace PetShopApp.Services
         /// Adds a product to the cart or increments the quantity if the product and size already exist.
         /// </summary>
         /// <param name="product">The product to add.</param>
-        /// <param name="size">Selected size for the product.</param>
+        /// <param name="size">Selected size, or an empty value if no size is required.</param>
         /// <param name="quantity">Quantity to be added.</param>
         public void AddToCart(Product product, string size, int quantity)
         {
-            if (product == null || quantity <= 0)
+            if (product is null || quantity <= 0)
                 return;
 
-            // Check if the exact product with the same size is already in the cart
+            size ??= string.Empty;
+
             var existingItem = _cartItems.FirstOrDefault(i =>
                 i.Product.Id == product.Id && i.Size == size);
 
             if (existingItem != null)
             {
-                // Increment quantity for existing item
-                existingItem.Quantity += quantity;
+                existingItem.Quantity =
+                    checked(existingItem.Quantity + quantity);
             }
             else
             {
-                // Add new item to the collection
                 _cartItems.Add(new CartItem
                 {
                     Product = product,
@@ -112,7 +112,7 @@ namespace PetShopApp.Services
         }
 
         /// <summary>
-        /// Invokes the OnChange event to signal UI components (like the Cart Sidebar) to re-render.
+        /// Notifies subscribed components when the cart changes.
         /// </summary>
         private void NotifyStateChanged()
         {
@@ -126,7 +126,7 @@ namespace PetShopApp.Services
     public class CartItem
     {
         public Product Product { get; set; } = new();
-        public string Size { get; set; } = "M";
+        public string Size { get; set; } = string.Empty;
         public int Quantity { get; set; }
     }
 }
