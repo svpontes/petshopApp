@@ -13,7 +13,7 @@ namespace PetShopApp.Data
         /// Initializes a new instance of the context using the specified options 
         /// (e.g., connection strings and database provider).
         /// </summary>
-        public ApplicationDbContext(DbContextOptions options) : base(options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
 
