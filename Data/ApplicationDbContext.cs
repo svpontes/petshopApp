@@ -13,7 +13,7 @@ namespace PetShopApp.Data
         /// Initializes a new instance of the context using the specified options 
         /// (e.g., connection strings and database provider).
         /// </summary>
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) //the <ApplicationDbContext> indicates tis options belongs to this context
         {
         }
 
@@ -36,5 +36,36 @@ namespace PetShopApp.Data
 
         // Manages the store's inventory, including prices, descriptions, and images
         public DbSet<Product> Products { get; set; }
+        public DbSet<AnimalType> AnimalTypes { get; set; }
+        public DbSet<Category> Categories { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Product>()
+                 .HasOne(product => product.AnimalType)
+                 .WithMany()
+                 .HasForeignKey(product => product.AnimalTypeId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Product>()
+                .HasOne(product => product.ProductCategory)
+                .WithMany()
+                .HasForeignKey(product => product.CategoryId);
+
+            modelBuilder.Entity<AnimalType>().HasData(
+            new AnimalType { Id = 1, Name = "Dog" },
+            new AnimalType { Id = 2, Name = "Cat" }
+            );
+
+            modelBuilder.Entity<Category>().HasData(
+                new Category { Id = 1, Name = "Food" },
+                new Category { Id = 2, Name = "Accessories" },
+                new Category { Id = 3, Name = "Toys" }
+            );
+
+        }
     }
+
 }

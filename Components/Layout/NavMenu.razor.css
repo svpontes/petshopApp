@@ -1,0 +1,27 @@
+.nav {
+  width: 230px;
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0 5px 0 0;
+    gap: 18px;
+
+    @media (min-width: 768px) {
+      gap: 22px;
+    }
+
+    @media (min-width: 992px) {
+      gap: 24px;
+    }
+
+    li .bi {
+      color: var(--bg-color);
+      font-size: 20px;
+
+      @media (min-width: 768px) {
+        font-size: 24px;
+      }
+    }
+  }
+}

@@ -19,6 +19,18 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         builder.Configuration.GetConnectionString("DefaultConnection")
     ));
 
+// Read the SQLite connection string from configuration.(sp)
+// Stop startup with a clear error if the connection string is missing.(sp)
+var connectionString = builder.Configuration.GetConnectionString("PetShopDatabase")
+    ?? throw new InvalidOperationException("Missing PetShopDatabase connection string.");
+
+//Register a factory so services can create a fresh SQlite context for each operation.(SP)
+builder.Services.AddDbContextFactory<ApplicationDbContext>(
+    options => options.UseSqlite(connectionString));
+
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<CartService>();
+
 var app = builder.Build();
 
 // Added by Rebecca: Helps seed the database for products.

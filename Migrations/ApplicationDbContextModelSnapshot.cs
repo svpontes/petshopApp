@@ -47,6 +47,67 @@ namespace PetShopApp.Migrations
                     b.ToTable("ContactMessages");
                 });
 
+            modelBuilder.Entity("PetShopApp.Models.AnimalType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AnimalTypes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Dog"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Cat"
+                        });
+                });
+
+            modelBuilder.Entity("PetShopApp.Models.Category", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Categories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Food"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Accessories"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "Toys"
+                        });
+                });
+
             modelBuilder.Entity("PetShopApp.Models.NewsletterSubscriber", b =>
                 {
                     b.Property<int>("Id")
@@ -113,9 +174,15 @@ namespace PetShopApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("AnimalTypeId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -137,6 +204,10 @@ namespace PetShopApp.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AnimalTypeId");
+
+                    b.HasIndex("CategoryId");
 
                     b.ToTable("Products");
                 });
@@ -226,6 +297,23 @@ namespace PetShopApp.Migrations
                     b.HasOne("PetShopApp.Models.User", null)
                         .WithMany("OrderHistory")
                         .HasForeignKey("UserId");
+                });
+
+            modelBuilder.Entity("PetShopApp.Models.Product", b =>
+                {
+                    b.HasOne("PetShopApp.Models.AnimalType", "AnimalType")
+                        .WithMany()
+                        .HasForeignKey("AnimalTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PetShopApp.Models.Category", "ProductCategory")
+                        .WithMany()
+                        .HasForeignKey("CategoryId");
+
+                    b.Navigation("AnimalType");
+
+                    b.Navigation("ProductCategory");
                 });
 
             modelBuilder.Entity("PetShopApp.Models.User", b =>
