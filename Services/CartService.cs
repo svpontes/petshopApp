@@ -19,12 +19,13 @@ namespace PetShopApp.Services
 
         // Provides a read-only view of the cart items.
         public IReadOnlyList<CartItem> CartItems => _cartItems.AsReadOnly();
+        public decimal UnitPrice { get; set; }
 
         // Calculates the total number of individual items in the cart
         public int TotalItems => _cartItems.Sum(i => i.Quantity);
 
         // Calculates the total price of all items currently in the cart
-        public decimal TotalPrice => _cartItems.Sum(i => i.Product.Price * i.Quantity);
+        public decimal TotalPrice => _cartItems.Sum(i => i.UnitPrice * i.Quantity);
 
         /// <summary>
         /// Adds a product to the cart or increments the quantity if the product and size already exist.
@@ -32,33 +33,40 @@ namespace PetShopApp.Services
         /// <param name="product">The product to add.</param>
         /// <param name="size">Selected size, or an empty value if no size is required.</param>
         /// <param name="quantity">Quantity to be added.</param>
-        public void AddToCart(Product product, string size, int quantity)
-        {
-            if (product is null || quantity <= 0)
-                return;
-
-            size ??= string.Empty;
-
-            var existingItem = _cartItems.FirstOrDefault(i =>
-                i.Product.Id == product.Id && i.Size == size);
-
-            if (existingItem != null)
+        
+        public void AddToCart(
+        Product product, string size, int quantity, ProductVariant? variant = null)
             {
-                existingItem.Quantity =
-                    checked(existingItem.Quantity + quantity);
-            }
-            else
-            {
-                _cartItems.Add(new CartItem
+                if (product is null || quantity <= 0)
+                    return;
+
+                if (variant is not null && variant.ProductId != product.Id)
+                    return;
+
+                var option = variant?.Label ?? size ?? string.Empty;
+                var unitPrice = variant?.Price ?? product.Price;
+
+                var existingItem = _cartItems.FirstOrDefault(i =>
+                    i.Product.Id == product.Id && i.Size == option);
+
+                if (existingItem is not null)
                 {
-                    Product = product,
-                    Size = size,
-                    Quantity = quantity
-                });
-            }
+                    existingItem.Quantity = checked(existingItem.Quantity + quantity);
+                    existingItem.UnitPrice = unitPrice;
+                }
+                else
+                {
+                    _cartItems.Add(new CartItem
+                    {
+                        Product = product,
+                        Size = option,
+                        Quantity = quantity,
+                        UnitPrice = unitPrice
+                    });
+                }
 
-            NotifyStateChanged();
-        }
+                NotifyStateChanged();
+            }
 
         /// <summary>
         /// Adjusts the quantity of a specific cart item. Removes the item if quantity drops to zero.
@@ -124,9 +132,9 @@ namespace PetShopApp.Services
     /// Represents a single entry in the shopping cart.
     /// </summary>
     public class CartItem
-    {
-        public Product Product { get; set; } = new();
-        public string Size { get; set; } = string.Empty;
-        public int Quantity { get; set; }
+    {public Product Product { get; set; } = new();
+    public string Size { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
     }
 }
