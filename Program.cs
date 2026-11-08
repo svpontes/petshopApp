@@ -5,19 +5,9 @@ using PetShopApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Added by Rebecca to make cart work
-builder.Services.AddScoped<CartService>();
-
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-
-//Rebecca's Database:
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(
-        builder.Configuration.GetConnectionString("DefaultConnection")
-    ));
 
 // Read the SQLite connection string from configuration.(sp)
 // Stop startup with a clear error if the connection string is missing.(sp)
@@ -33,11 +23,13 @@ builder.Services.AddScoped<CartService>();
 
 var app = builder.Build();
 
-// Added by Rebecca: Helps seed the database for products.
+// Seeder added by Rebecca: Just helps test the database
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider
-        .GetRequiredService<ApplicationDbContext>();
+    var factory = scope.ServiceProvider
+        .GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+
+    await using var dbContext = await factory.CreateDbContextAsync();
 
     await ProductSeeder.SeedAsync(dbContext);
 }

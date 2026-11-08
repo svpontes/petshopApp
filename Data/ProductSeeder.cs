@@ -1,3 +1,4 @@
+//Rebecca's mock data
 
 using Microsoft.EntityFrameworkCore;
 using PetShopApp.Models;
@@ -7,47 +8,75 @@ namespace PetShopApp.Data
     public static class ProductSeeder
     {
         public static async Task SeedAsync(
-            ApplicationDbContext dbContext)
+            ApplicationDbContext context)
         {
-            if (await dbContext.Products.AnyAsync())
-                return;
+            await context.Database.MigrateAsync();
 
-            var products = new List<Product>
+            if (!await context.AnimalTypes.AnyAsync())
             {
-                new Product
-                {
-                    Name = "Cat Food",
-                    Description = "Food for adult cats.",
-                    Category = "Food",
-                    Price = 50.00m,
-                    ImageUrl = "/images/cat-food.jpg",
-                    SecondaryImageUrlsRaw = "",
-                },
+                context.AnimalTypes.AddRange(
+                    new AnimalType { Name = "Dog" },
+                    new AnimalType { Name = "Cat" },
+                    new AnimalType { Name = "Horse" },
+                    new AnimalType { Name = "Rabbit" },
+                    new AnimalType { Name = "Bird" },
+                    new AnimalType { Name = "Sheep" },
+                    new AnimalType { Name = "Pig" }
+                );
 
-                new Product
-                {
-                    Name = "Comfort Pet Bed",
-                    Description = "A soft and comfortable bed for your pet.",
-                    Category = "Accessories",
-                    Price = 35.00m,
-                    ImageUrl = "/images/pet-bed.jpg",
-                    SecondaryImageUrlsRaw = "",
-                },
+                await context.SaveChangesAsync();
+            }
 
-                new Product
-                {
-                    Name = "Classic Pet Collar",
-                    Description = "An adjustable collar for everyday use.",
-                    Category = "Accessories",
-                    Price = 15.00m,
-                    ImageUrl = "/images/pet-collar.jpg",
-                    SecondaryImageUrlsRaw = "",
-                }
-            };
+            if (!await context.Categories.AnyAsync())
+            {
+                context.Categories.AddRange(
+                    new Category { Name = "Food" },
+                    new Category { Name = "Accessories" },
+                    new Category { Name = "Toys" }
+                );
 
-            await dbContext.Products.AddRangeAsync(products);
+                await context.SaveChangesAsync();
+            }
 
-            await dbContext.SaveChangesAsync();
+            if (!await context.Products.AnyAsync())
+            {
+                var dog = await context.AnimalTypes
+                    .FirstAsync(a => a.Name == "Dog");
+
+                var cat = await context.AnimalTypes
+                    .FirstAsync(a => a.Name == "Cat");
+
+                var food = await context.Categories
+                    .FirstAsync(c => c.Name == "Food");
+
+                var accessories = await context.Categories
+                    .FirstAsync(c => c.Name == "Accessories");
+
+                context.Products.AddRange(
+                    new Product
+                    {
+                        Name = "Cat Food",
+                        Description = "Food for adult cats lol.",
+                        AnimalTypeId = cat.Id,
+                        CategoryId = food.Id,
+                        Category = "Food",
+                        Price = 34.99m,
+                        ImageUrl = "/images/cat-food.jpg"
+                    },
+                    new Product
+                    {
+                        Name = "Cat Collar",
+                        Description = "COOL collar for the CAT.",
+                        AnimalTypeId = cat.Id,
+                        CategoryId = accessories.Id,
+                        Category = "Accessories",
+                        Price = 12.99m,
+                        ImageUrl = "/images/cat-collar.jpg"
+                    }
+                );
+
+                await context.SaveChangesAsync();
+            }
         }
     }
 }
