@@ -1,8 +1,12 @@
 using PetShopApp.Components;
 using Microsoft.EntityFrameworkCore;
 using PetShopApp.Data;
+using PetShopApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Added by Rebecca to make cart work
+builder.Services.AddScoped<CartService>();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -16,6 +20,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     ));
 
 var app = builder.Build();
+
+// Added by Rebecca: Helps seed the database for products.
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider
+        .GetRequiredService<ApplicationDbContext>();
+
+    await ProductSeeder.SeedAsync(dbContext);
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
