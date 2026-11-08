@@ -56,7 +56,7 @@ namespace PetShopApp.Data
                     new Product
                     {
                         Name = "Cat Food",
-                        Description = "Food for adult cats lol.",
+                        Description = "Food for adult cats.",
                         AnimalTypeId = cat.Id,
                         CategoryId = food.Id,
                         Category = "Food",
@@ -66,7 +66,7 @@ namespace PetShopApp.Data
                     new Product
                     {
                         Name = "Cat Collar",
-                        Description = "COOL collar for the CAT.",
+                        Description = "A cool collar for your cat!",
                         AnimalTypeId = cat.Id,
                         CategoryId = accessories.Id,
                         Category = "Accessories",

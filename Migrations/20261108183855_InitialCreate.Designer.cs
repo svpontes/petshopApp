@@ -11,7 +11,7 @@ using PetShopApp.Data;
 namespace PetShopApp.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261108172840_InitialCreate")]
+    [Migration("20261108183855_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
