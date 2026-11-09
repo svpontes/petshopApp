@@ -13,7 +13,7 @@
    an image gallery, size selection, quantity management, and user reviews.
 *@
 
-<PageTitle>@(product?.Name ?? "Product Details") - text page or app name</PageTitle>
+<PageTitle>@(product?.Name ?? "Product Details") - PetShopApp</PageTitle>
 
 @if (product == null)
 {
@@ -83,21 +83,24 @@ else
 
                 <p class="lead mb-4 text-muted">@product.Description</p>
 
-                @* Size Selection Area *@
+                @if (optionLabel is not null && product.AvailableSizes is { Count: > 0 })
+                {
                 <div class="mb-4">
                     <h5 class="fw-bold mb-3 @(showSizeWarning ? "text-danger" : "") text-uppercase">
-                        Size: @(showSizeWarning ? " (Required)" : "")
+                        @(optionLabel): @(showSizeWarning ? "(Required)" : "")
                     </h5>
                     <div class="d-flex gap-2 flex-wrap">
-                        @foreach (var size in product.AvailableSizes)
+                        @foreach (var option in product.AvailableSizes)
                         {
-                            <button class="btn @(selectedSize == size ? "btn-dark" : "btn-outline-dark") px-4 py-2 fw-bold"
-                                    @onclick="() => SelectSize(size)">
-                                @size
+                            <button type="button"
+                                    class="btn @(selectedSize == option ? "btn-dark" : "btn-outline-dark") px-4 py-2 fw-bold"
+                                    @onclick="() => SelectSize(option)">
+                                @option
                             </button>
                         }
                     </div>
                 </div>
+                }    
 
                 @* Quantity Adjustment Controls *@
                 <div class="mb-4">
@@ -122,6 +125,13 @@ else
                 }
             </div>
         </div>
+        @if (!string.IsNullOrWhiteSpace(product.MoreInformation))
+            {
+                <section class="mt-5 border-top pt-4">
+                    <h3 class="fw-bold">More Information</h3>
+                    <p style="white-space: pre-line;">@product.MoreInformation</p>
+                </section>
+            }
 
         @* --- REVIEWS SECTION --- *@
         <div class="mt-5 border-top pt-5">
@@ -180,7 +190,8 @@ else
 
     // State management variables
     private Product? product;
-    private string selectedSize = "";
+    private string? optionLabel;
+    private string selectedSize = string.Empty;
     private bool showSizeWarning = false;
     private bool showSuccessMessage = false;
     private string currentMainImageUrl = string.Empty;
@@ -201,9 +212,12 @@ else
         if (product != null)
         {
             // Set defaults if data is missing
-            if (string.IsNullOrWhiteSpace(product.ImageUrl)) product.ImageUrl = "/images/placeholder.png";
-            if (product.AvailableSizes == null || !product.AvailableSizes.Any())
-                product.AvailableSizes = new List<string> { "S", "M", "L", "XL" };
+            optionLabel = product.Category?.Trim().ToUpperInvariant() switch
+            {
+                "CLOTHING" => "Size",
+                "FOOD" => "Bag Weight",
+                _ => null
+            };
 
             currentMainImageUrl = GetImageUrl(product.ImageUrl);
 
@@ -276,15 +290,27 @@ else
     /// </summary>
     private async Task AddToCart()
     {
-        if (string.IsNullOrEmpty(selectedSize)) { showSizeWarning = true; return; }
         if (product == null) return;
+        var requiresOption = optionLabel is not null &&
+                         product.AvailableSizes is { Count: > 0 };
 
-        CartService.AddToCart(product, selectedSize, quantity);
-        showSuccessMessage = true;
-        await Task.Delay(1000); // Visual feedback duration
-        showSuccessMessage = false;
-        StateHasChanged();
-    }
+        if (requiresOption && !product.AvailableSizes.Contains(selectedSize))
+         {
+            showSizeWarning = true;
+            return;
+         }      
+         CartService.AddToCart(
+            product,
+            requiresOption ? selectedSize : string.Empty,
+            quantity);
+
+            showSuccessMessage = true;
+            await Task.Delay(1000);
+            showSuccessMessage = false;
+            StateHasChanged();
+        }           
+
+    
 
     private static string GetImageUrl(string? url) => string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
 
@@ -292,4 +318,6 @@ else
     /// Garbage collection: unsubscribes from the event to prevent memory leaks.
     /// </summary>
     public void Dispose() => CartService.OnChange -= HandleCartChanged;
+    }   
+    
 }

@@ -15,7 +15,7 @@
 <PageTitle>text for access catalog or categories</PageTitle>
 
 <section class="container py-5">
-    <h2 class="fw-bold text-uppercase mb-4">Exclusive Collection</h2>
+    <h2 class="fw-bold text-uppercase mb-4">Products</h2>
 
     @* --- EMPTY STATE HANDLER --- *@
     @if (products == null || !products.Any())
@@ -50,13 +50,13 @@
 
                             <p class="text-muted small flex-grow-1">@product.Description</p>
 
-                            @* --- SIZE AVAILABILITY BADGES --- *@
-                            @if (product.AvailableSizes != null && product.AvailableSizes.Any())
+                            @* --- SIZE AVAILABILITY BADGES --- changed for show only options available for this product *@
+                            @if (product.AvailableSizes is {Count: > 0})
                             {
                                 <div class="d-flex flex-wrap gap-2 mb-3">
-                                    @foreach (var size in product.AvailableSizes)
+                                    @foreach (var option in product.AvailableSizes)
                                     {
-                                        <span class="badge text-bg-light border text-dark">@size</span>
+                                        <span class="badge text-bg-light border text-dark">@option</span>
                                     }
                                 </div>
                             }
@@ -86,7 +86,7 @@
 
 @code {
     private List<Product> products = new();
-    private bool isPanelOpen = false;
+    private bool isPanelOpen;
     private Product? selectedProduct;
 
     /// <summary>
@@ -98,21 +98,7 @@
         products = await DbContext.Products
             .OrderBy(p => p.Name)
             .ToListAsync();
-
-        foreach (var product in products)
-        {
-            // Ensure every product has a fallback image if the URL is missing
-            if (string.IsNullOrWhiteSpace(product.ImageUrl))
-            {
-                product.ImageUrl = "/images/placeholder.png";
-            }
-
-            // Provide default sizes if none are defined in the database
-            if (product.AvailableSizes == null || !product.AvailableSizes.Any())
-            {
-                product.AvailableSizes = new List<string> { "S", "M", "L", "XL" };
-            }
-        }
+        
     }
 
     /// <summary>
