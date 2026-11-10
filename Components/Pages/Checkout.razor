@@ -167,7 +167,7 @@
 
                             <div class="text-end">
                                 <span class="fw-bold" style="font-size: 0.9rem;">
-                                    @((item.Product.Price * item.Quantity).ToString("C"))
+                                    @((item.UnitPrice * item.Quantity).ToString("C"))
                                 </span>
                             </div>
                         </div>
@@ -268,7 +268,7 @@
                 ImageUrl = i.Product.ImageUrl,
                 Size = i.Size,
                 Quantity = i.Quantity,
-                Price = i.Product.Price
+                Price = i.UnitPrice
             }).ToList();
 
             // 3. ASSEMBLY: Create the comprehensive Order object

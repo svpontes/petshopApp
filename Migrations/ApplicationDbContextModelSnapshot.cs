@@ -177,6 +177,10 @@ namespace PetShopApp.Migrations
                     b.Property<int>("AnimalTypeId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AvailableOptionsRaw")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -189,6 +193,10 @@ namespace PetShopApp.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MoreInformation")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
@@ -242,6 +250,30 @@ namespace PetShopApp.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ProductReviews");
+                });
+
+            modelBuilder.Entity("PetShopApp.Models.ProductVariant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId", "Label")
+                        .IsUnique();
+
+                    b.ToTable("ProductVariants");
                 });
 
             modelBuilder.Entity("PetShopApp.Models.User", b =>
@@ -314,6 +346,22 @@ namespace PetShopApp.Migrations
                     b.Navigation("AnimalType");
 
                     b.Navigation("ProductCategory");
+                });
+
+            modelBuilder.Entity("PetShopApp.Models.ProductVariant", b =>
+                {
+                    b.HasOne("PetShopApp.Models.Product", "Product")
+                        .WithMany("Variants")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("PetShopApp.Models.Product", b =>
+                {
+                    b.Navigation("Variants");
                 });
 
             modelBuilder.Entity("PetShopApp.Models.User", b =>

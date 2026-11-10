@@ -38,7 +38,7 @@
                             <div class="col-md-6 col-9 px-3">
                                 <h5 class="fw-bold m-0">
                                     <a href="@($"/product/{item.Product.Id}")"
-                                    class="text-dark text-decoration-none">
+                                       class="text-dark text-decoration-none">
                                         @item.Product.Name
                                     </a>
                                 </h5>
@@ -54,11 +54,11 @@
                                 }
 
                                 <p class="mb-1">
-                                    Unit price: @item.Product.Price.ToString("C")
+                                    Unit price: @item.UnitPrice.ToString("C")
                                 </p>
 
                                 <p class="fw-bold">
-                                    Subtotal: @((item.Product.Price * item.Quantity).ToString("C"))
+                                    Subtotal: @((item.UnitPrice * item.Quantity).ToString("C"))
                                 </p>
                             </div>
 

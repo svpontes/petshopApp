@@ -12,6 +12,8 @@ namespace PetShopApp.Models
         public string Name { get; set; } = string.Empty;
 
         public string Description { get; set; } = string.Empty;
+        // fild for more prouct info
+        public string MoreInformation { get; set; } = string.Empty;
 
         // Foreign key identifying the animal type this product is intended for.
         public int AnimalTypeId { get; set; }
@@ -29,14 +31,26 @@ namespace PetShopApp.Models
         
         public decimal Price { get; set; }
 
+        public List<ProductVariant> Variants { get; set; } = new();
+
         public string ImageUrl { get; set; } = string.Empty;
 
         // Stores secondary image URLs separated by newlines.
         public string SecondaryImageUrlsRaw { get; set; } = string.Empty;
 
-        [NotMapped]
-        public List<string> AvailableSizes { get; set; } = new();
+        public string AvailableOptionsRaw { get; set; } = string.Empty;
 
+        [NotMapped]
+        public List<string> AvailableSizes
+        {
+            get => AvailableOptionsRaw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+
+            set => AvailableOptionsRaw = value is null
+                ? string.Empty
+                : string.Join(", ", value);
+        }
         [NotMapped]
         public List<string> SecondaryImageUrls
         {
@@ -46,9 +60,9 @@ namespace PetShopApp.Models
                     .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToList();
 
-            set => SecondaryImageUrlsRaw = value == null || !value.Any()
-            ? string.Empty
-            : string.Join("\n", value);
+            set => SecondaryImageUrlsRaw = value is null || value.Count == 0
+                ? string.Empty
+                : string.Join("\n", value);
         }
     }
 }
