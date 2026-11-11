@@ -79,28 +79,42 @@ else
                 </div>
 
                 @* Dynamic Price Display (Calculates Quantity * Price) *@
-                <h4 class="fw-bold mb-4" style="color: #5f5e5e;">$@((product.Price * quantity).ToString("F2"))</h4>
+                <h4 class="fw-bold mb-4" style="color: #5f5e5e;">
+                $@(((SelectedVariant?.Price ?? product.Price) * quantity).ToString("F2"))
+                </h4>
 
                 <p class="lead mb-4 text-muted">@product.Description</p>
 
-                @if (optionLabel is not null && product.AvailableSizes is { Count: > 0 })
+                @if (product.Variants.Count > 0 ||
+                (optionLabel is not null && product.AvailableSizes.Count > 0))
                 {
-                <div class="mb-4">
-                    <h5 class="fw-bold mb-3 @(showSizeWarning ? "text-danger" : "") text-uppercase">
-                        @(optionLabel): @(showSizeWarning ? "(Required)" : "")
-                    </h5>
-                    <div class="d-flex gap-2 flex-wrap">
-                        @foreach (var option in product.AvailableSizes)
-                        {
-                            <button type="button"
-                                    class="btn @(selectedSize == option ? "btn-dark" : "btn-outline-dark") px-4 py-2 fw-bold"
-                                    @onclick="() => SelectSize(option)">
-                                @option
-                            </button>
-                        }
+                     var options = product.Variants.Count > 0
+                        ? product.Variants
+                            .OrderBy(v => GetWeightInPounds(v.Label))
+                            .ThenBy(v => v.Id)
+                            .Select(v => v.Label)
+                            .ToList()
+                        : product.AvailableSizes
+                            .OrderBy(GetWeightInPounds)
+                            .ToList();
+
+                    <div class="mb-4">
+                        <h5 class="fw-bold mb-3 @(showSizeWarning ? "text-danger" : "") text-uppercase">
+                            @(optionLabel ?? "Option"): @(showSizeWarning ? "(Required)" : "")
+                        </h5>
+
+                        <div class="d-flex gap-2 flex-wrap">
+                            @foreach (var option in options)
+                            {
+                                <button type="button"
+                                        class="btn @(selectedSize == option ? "btn-dark" : "btn-outline-dark") px-4 py-2 fw-bold"
+                                        @onclick="() => SelectSize(option)">
+                                    @option
+                                </button>
+                            }
+                        </div>
                     </div>
-                </div>
-                }    
+                }   
 
                 @* Quantity Adjustment Controls *@
                 <div class="mb-4">
@@ -192,6 +206,8 @@ else
     private Product? product;
     private string? optionLabel;
     private string selectedSize = string.Empty;
+    private ProductVariant? SelectedVariant =>
+    product?.Variants.FirstOrDefault(v => v.Label == selectedSize);
     private bool showSizeWarning = false;
     private bool showSuccessMessage = false;
     private string currentMainImageUrl = string.Empty;
@@ -207,7 +223,9 @@ else
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        product = await DbContext.Products.FirstOrDefaultAsync(p => p.Id == Id);
+        product = await DbContext.Products
+        .Include(p => p.Variants)
+        .FirstOrDefaultAsync(p => p.Id == Id);
 
         if (product != null)
         {
@@ -288,30 +306,56 @@ else
     /// <summary>
     /// Validates and adds the current selection to the persistent CartService.
     /// </summary>
+
     private async Task AddToCart()
     {
-        if (product == null) return;
-        var requiresOption = optionLabel is not null &&
-                         product.AvailableSizes is { Count: > 0 };
+    var currentProduct = product;
+    if (currentProduct is null)
+        return;
 
-        if (requiresOption && !product.AvailableSizes.Contains(selectedSize))
-         {
-            showSizeWarning = true;
-            return;
-         }      
-         CartService.AddToCart(
-            product,
-            requiresOption ? selectedSize : string.Empty,
-            quantity);
+    var variant = currentProduct.Variants
+        .FirstOrDefault(v => v.Label == selectedSize);
 
-            showSuccessMessage = true;
-            await Task.Delay(1000);
-            showSuccessMessage = false;
-            StateHasChanged();
-        }           
+    var hasVariants = currentProduct.Variants.Count > 0;
+    var requiresLegacyOption = !hasVariants &&
+                               optionLabel is not null &&
+                               currentProduct.AvailableSizes.Count > 0;
 
+    if ((hasVariants && variant is null) ||
+        (requiresLegacyOption && !currentProduct.AvailableSizes.Contains(selectedSize)))
+    {
+        showSizeWarning = true;
+        return;
+    }
+
+    CartService.AddToCart(
+        currentProduct,
+        variant?.Label ?? (requiresLegacyOption ? selectedSize : string.Empty),
+        quantity,
+        variant);
+
+    showSuccessMessage = true;
+    await Task.Delay(1000);
+    showSuccessMessage = false;
+    StateHasChanged();
     
+    }    
+    private static decimal GetWeightInPounds(string label)
+    {
+    var text = label.Trim();
 
+    if (text.EndsWith(" lb", StringComparison.OrdinalIgnoreCase) &&
+        decimal.TryParse(
+            text[..^3].Trim(),
+            System.Globalization.NumberStyles.AllowDecimalPoint,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var weight))
+    {
+        return weight;
+    }
+
+    return decimal.MaxValue;
+    }
     private static string GetImageUrl(string? url) => string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
 
     /// <summary>

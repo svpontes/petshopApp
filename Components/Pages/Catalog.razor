@@ -5,6 +5,7 @@
 @using PetShopApp.Components.Shared
 @inject PetShopApp.Data.ApplicationDbContext DbContext
 @rendermode InteractiveServer
+@inject PetShopApp.Services.CartService CartService
 
 @* --- PRODUCT CATALOG COMPONENT ---
    Purpose: Displays the full collection of available products.
@@ -51,25 +52,44 @@
                             <p class="text-muted small flex-grow-1">@product.Description</p>
 
                             @* --- SIZE AVAILABILITY BADGES --- changed for show only options available for this product *@
-                            @if (product.AvailableSizes is {Count: > 0})
-                            {
-                                <div class="d-flex flex-wrap gap-2 mb-3">
-                                    @foreach (var option in product.AvailableSizes)
-                                    {
-                                        <span class="badge text-bg-light border text-dark">@option</span>
-                                    }
-                                </div>
-                            }
+                            @if (product.Variants.Count > 0)
+                                {
+                                    <div class="d-flex flex-wrap gap-2 mb-3">
+                                        @foreach (var variant in product.Variants.OrderBy(v => GetWeightInPounds(v.Label))
+                                                .ThenBy(v => v.Id))
+                                        {
+                                            var isSelected =
+                                                selectedVariants.TryGetValue(product.Id, out var selected) &&
+                                                selected.Id == variant.Id;
+
+                                            <button type="button"
+                                                    class="btn btn-sm @(isSelected ? "btn-dark" : "btn-outline-dark")"
+                                                    aria-pressed="@(isSelected ? "true" : "false")"
+                                                    @onclick="() => selectedVariants[product.Id] = variant">
+                                                @variant.Label
+                                            </button>
+                                        }
+                                    </div>
+                                }
 
                             @* --- ACTIONS AREA --- *@
                             <div class="d-flex justify-content-between align-items-center mt-auto">
-                                <span class="fw-bold">$@product.Price.ToString("0.00")</span>
+                                @{
+                                var displayPrice = selectedVariants.TryGetValue(product.Id, out var chosen)
+                                    ? chosen.Price
+                                    : product.Price;
+                                }
+                                <span class="fw-bold">$@displayPrice.ToString("0.00")</span>
 
                                 @* Triggers the Quick View panel instead of full navigation *@
                                 <button class="btn btn-dark rounded-0"
-                                        @onclick="() => OpenQuickView(product)">
-                                    ADD to Cart
+                                    disabled="@(product.Variants.Count > 0 && !selectedVariants.ContainsKey(product.Id))"
+                                    @onclick="() => AddFromCatalog(product)">
+                                    @(product.Variants.Count > 0 && !selectedVariants.ContainsKey(product.Id)
+                                    ? "SELECT AN OPTION"
+                                    : "ADD TO CART")
                                 </button>
+                                
                             </div>
                         </div>
                     </div>
@@ -88,7 +108,7 @@
     private List<Product> products = new();
     private bool isPanelOpen;
     private Product? selectedProduct;
-
+    private readonly Dictionary<int, ProductVariant> selectedVariants = new();
     /// <summary>
     /// Lifecycle method: Fetches products from the database alphabetically by name.
     /// Includes data sanitization for images and sizes.
@@ -96,9 +116,10 @@
     protected override async Task OnInitializedAsync()
     {
         products = await DbContext.Products
-            .OrderBy(p => p.Name)
-            .ToListAsync();
-        
+        .Include(product => product.Variants)
+        .OrderBy(product => product.Name)
+        .ToListAsync();
+      
     }
 
     /// <summary>
@@ -129,5 +150,34 @@
         return string.IsNullOrWhiteSpace(url)
             ? "/images/placeholder.png"
             : url.Trim();
+    }
+    private void AddFromCatalog(Product product)
+    {
+    if (product.Variants.Count == 0)
+    {
+        OpenQuickView(product);
+        return;
+    }
+
+    if (selectedVariants.TryGetValue(product.Id, out var variant))
+    {
+        CartService.AddToCart(product, variant.Label, 1, variant);
+    }
+    }
+    private static decimal GetWeightInPounds(string label)
+    {
+    var text = label.Trim();
+
+    if (text.EndsWith(" lb", StringComparison.OrdinalIgnoreCase) &&
+        decimal.TryParse(
+            text[..^3].Trim(),
+            System.Globalization.NumberStyles.AllowDecimalPoint,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var weight))
+    {
+        return weight;
+    }
+
+    return decimal.MaxValue;
     }
 }

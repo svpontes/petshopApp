@@ -31,6 +31,8 @@ namespace PetShopApp.Models
         
         public decimal Price { get; set; }
 
+        public List<ProductVariant> Variants { get; set; } = new();
+
         public string ImageUrl { get; set; } = string.Empty;
 
         // Stores secondary image URLs separated by newlines.

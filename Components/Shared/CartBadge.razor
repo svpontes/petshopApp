@@ -1,0 +1,29 @@
+
+@using PetShopApp.Services
+@implements IDisposable
+@inject CartService CartService
+
+@if (CartService.TotalItems > 0)
+{
+    <span class="badge bg-danger rounded-pill ms-1"
+          aria-label="@($"{CartService.TotalItems} items in cart")">
+        @CartService.TotalItems
+    </span>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        CartService.OnChange += HandleCartChanged;
+    }
+
+    private void HandleCartChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        CartService.OnChange -= HandleCartChanged;
+    }
+}
