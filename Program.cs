@@ -16,13 +16,24 @@ var connectionString = builder.Configuration.GetConnectionString("PetShopDatabas
 
 //Register a factory so services can create a fresh SQlite context for each operation.(SP)
 builder.Services.AddDbContextFactory<ApplicationDbContext>(
-    options => options.UseSqlite(connectionString));  
+    options => options.UseSqlite(connectionString));
 
-builder.Services.AddScoped<ProductService>();    
+builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CartService>();
 
 var app = builder.Build();
+
+// Seeder added by Rebecca: Just helps test the database
+using (var scope = app.Services.CreateScope())
+{
+    var factory = scope.ServiceProvider
+        .GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+
+    await using var dbContext = await factory.CreateDbContextAsync();
+
+    await ProductSeeder.SeedAsync(dbContext);
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

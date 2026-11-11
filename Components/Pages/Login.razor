@@ -17,13 +17,16 @@
             @* User Input Fields with Two-Way Data Binding (@bind) *@
             <div class="mb-3">
                 <label class="small fw-bold text-secondary">EMAIL</label>
-                <input type="email" @bind="email" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
+                <input type="email" @bind="email"
+                       class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
             </div>
 
             <div class="mb-4">
                 <label class="small fw-bold text-secondary">PASSWORD</label>
-                <input type="password" @bind="password" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
-                <a href="/forgot-password" class="hover-white small text-secondary text-decoration-none" text-align="right" style="float: right; margin-top: 5px;">
+                <input type="password" @bind="password"
+                       class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
+                <a href="/forgot-password" class="hover-white small text-secondary text-decoration-none"
+                   text-align="right" style="float: right; margin-top: 5px;">
                     Forgot password? Click Here!
                 </a>
             </div>
@@ -43,11 +46,12 @@
 
             @* Navigation to Registration flow *@
             <div class="text-center">
-                <a href="/register" class="text-secondary small text-decoration-none hover-white">Don't have an account? Sign Up</a>
+                <a href="/register" class="text-secondary small text-decoration-none hover-white">Don't have an account?
+                    Sign Up</a>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 @code {
     // Local state variables for form inputs and feedback
@@ -74,14 +78,26 @@
                while standard customers are sent to the storefront home.
             *@
             if (AuthService.CurrentUser?.Role == "Admin")
+            {
                 NavManager.NavigateTo("/admin");
+            }
             else
-                NavManager.NavigateTo("/");
+            {
+                NavManager.NavigateTo("/profile");
+            }
         }
         else
         {
             // Update UI state with failure message
             errorMessage = "Invalid credentials.";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        if (AuthService.IsLoggedIn)
+        {
+            NavManager.NavigateTo("/profile");
         }
     }
 }

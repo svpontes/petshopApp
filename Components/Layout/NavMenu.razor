@@ -1,12 +1,11 @@
+@inject PetShopApp.Services.AuthService AuthService
+
 <nav class="nav d-flex justify-content-end">
     <ul class="d-flex flex-row align-items-center">
         <li class="d-flex align-items-center">
-            <a href="/cart"
-            class="text-decoration-none"
-            aria-label="Shopping cart"
-            style="position: relative; display: inline-flex;
-                    align-items: center; justify-content: center;
-                    width: 32px; height: 36px;">
+            <a href="/cart" class="text-decoration-none" aria-label="Shopping cart" style="position: relative; display: inline-flex;
+                align-items: center; justify-content: center;
+                width: 32px; height: 36px;">
                 <i class="bi bi-bag" style="font-size: 30px;"></i>
 
                 <span class="cart-count">
@@ -14,7 +13,12 @@
                 </span>
             </a>
         </li>
-        <li class="d-flex align-items-center"><a href="/login"><i class="bi bi-person"></i></a></li>
+        <li class="d-flex align-items-center">
+            <NavLink href="@(AuthService.IsLoggedIn ? "/profile" : "/login")" class="text-decoration-none"
+                     aria-label="My Account">
+                <i class="bi bi-person"></i>
+            </NavLink>
+        </li>
     </ul>
 </nav>
 <style>

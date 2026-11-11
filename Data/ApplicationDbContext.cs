@@ -37,18 +37,18 @@ namespace PetShopApp.Data
         // Manages the store's inventory, including prices, descriptions, and images
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductVariant> ProductVariants { get; set; }
-        public DbSet<AnimalType> AnimalTypes {get; set;}
-        public DbSet<Category> Categories {get; set;}
+        public DbSet<AnimalType> AnimalTypes { get; set; }
+        public DbSet<Category> Categories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-           modelBuilder.Entity<Product>()
-                .HasOne(product => product.AnimalType)
-                .WithMany()
-                .HasForeignKey(product => product.AnimalTypeId)
-                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Product>()
+                 .HasOne(product => product.AnimalType)
+                 .WithMany()
+                 .HasForeignKey(product => product.AnimalTypeId)
+                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Product>()
             .HasOne(product => product.ProductCategory)
@@ -77,5 +77,5 @@ namespace PetShopApp.Data
 
         }
     }
-    
+
 }
