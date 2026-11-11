@@ -90,3 +90,36 @@ h1:focus {
 .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+.pet-page {
+    position: relative;
+    isolation: isolate;
+}
+
+.pet-page::before {
+    content: "";
+    position: absolute;
+    right: -3rem;
+    bottom: 1rem;
+    width: min(50%, 620px);
+    height: 460px;
+    background: url("/images/petBkgContactUs.webp") right bottom / contain no-repeat;
+    opacity: 1.2;
+    pointer-events: none;
+    z-index: -1;
+}
+
+@media (max-width: 991.98px) {
+    .pet-page::before {
+        display: none;
+    }
+
+    .pet-page::after {
+        content: "";
+        display: block;
+        width: min(100%, 420px);
+        height: clamp(180px, 55vw, 340px);
+        margin: 1.5rem auto 0;
+        background: url("/images/petBkgContactUs.webp") center bottom / contain no-repeat;
+        pointer-events: none;
+    }
+}
