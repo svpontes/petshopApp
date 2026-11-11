@@ -3,8 +3,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace PetShopApp.Migrations
 {
     /// <inheritdoc />
@@ -165,25 +163,6 @@ namespace PetShopApp.Migrations
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id");
-                });
-
-            migrationBuilder.InsertData(
-                table: "AnimalTypes",
-                columns: new[] { "Id", "Name" },
-                values: new object[,]
-                {
-                    { 1, "Dog" },
-                    { 2, "Cat" }
-                });
-
-            migrationBuilder.InsertData(
-                table: "Categories",
-                columns: new[] { "Id", "Name" },
-                values: new object[,]
-                {
-                    { 1, "Food" },
-                    { 2, "Accessories" },
-                    { 3, "Toys" }
                 });
 
             migrationBuilder.CreateIndex(

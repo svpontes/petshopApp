@@ -11,8 +11,8 @@ using PetShopApp.Data;
 namespace PetShopApp.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261108183855_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20261105225901_SeedCatalogLookups")]
+    partial class SeedCatalogLookups
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
