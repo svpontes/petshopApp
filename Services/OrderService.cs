@@ -87,11 +87,40 @@ public class OrderService
                 throw new InvalidOperationException(
                     $"Product {item.ProductId} does not exist.");
 
-            if (product.Price < 0)
-                throw new InvalidOperationException(
-                    $"Product {item.ProductId} has an invalid price.");
+            decimal unitPrice;
 
-            total = checked(total + product.Price * item.Quantity);
+            if (product.Variants.Count > 0)
+            {
+                var variant = product.Variants.FirstOrDefault(v =>
+                    v.ProductId == product.Id &&
+                    v.Label == item.Size);
+
+                if (variant == null)
+                    throw new InvalidOperationException(
+                        $"Invalid variant for product {product.Id}.");
+
+                unitPrice = variant.Price;
+            }
+            else
+            {
+                if (product.AvailableSizes.Count > 0 &&
+                    !product.AvailableSizes.Contains(item.Size))
+                    throw new InvalidOperationException(
+                        $"Invalid option for product {product.Id}.");
+
+                if (product.AvailableSizes.Count == 0 &&
+                    !string.IsNullOrWhiteSpace(item.Size))
+                    throw new InvalidOperationException(
+                        $"Product {product.Id} has no options.");
+
+                unitPrice = product.Price;
+            }
+
+            if (unitPrice < 0)
+                throw new InvalidOperationException(
+                    $"Product {product.Id} has an invalid price.");
+
+            total = checked(total + unitPrice * item.Quantity);
         }
 
         return total;
