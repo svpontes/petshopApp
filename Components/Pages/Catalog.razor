@@ -119,6 +119,16 @@
         .Include(product => product.Variants)
         .OrderBy(product => product.Name)
         .ToListAsync();
+        foreach (var product in products)
+            {
+                var defaultVariant = product.Variants.FirstOrDefault(
+                    variant => GetWeightInPounds(variant.Label) == 2.2m);
+
+                if (defaultVariant is not null)
+                {
+                    selectedVariants.TryAdd(product.Id, defaultVariant);
+                }
+        }
       
     }
 
