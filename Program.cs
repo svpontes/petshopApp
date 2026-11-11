@@ -17,7 +17,8 @@ var connectionString = builder.Configuration.GetConnectionString("PetShopDatabas
 //Register a factory so services can create a fresh SQlite context for each operation.(SP)
 builder.Services.AddDbContextFactory<ApplicationDbContext>(
     options => options.UseSqlite(connectionString));  
-    
+
+builder.Services.AddScoped<ProductService>();    
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CartService>();
 

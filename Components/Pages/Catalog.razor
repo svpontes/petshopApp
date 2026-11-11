@@ -3,7 +3,7 @@
 @using PetShopApp.Models
 @using PetShopApp.Components
 @using PetShopApp.Components.Shared
-@inject PetShopApp.Data.ApplicationDbContext DbContext
+@inject PetShopApp.Services.ProductService ProductService
 @rendermode InteractiveServer
 @inject PetShopApp.Services.CartService CartService
 
@@ -115,21 +115,17 @@
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        products = await DbContext.Products
-        .Include(product => product.Variants)
-        .OrderBy(product => product.Name)
-        .ToListAsync();
+        products = await ProductService.GetCatalogProductsAsync();
         foreach (var product in products)
+        {
+            var defaultVariant = product.Variants.FirstOrDefault(
+            variant => GetWeightInPounds(variant.Label) == 2.2m);
+        
+            if (defaultVariant is not null)
             {
-                var defaultVariant = product.Variants.FirstOrDefault(
-                    variant => GetWeightInPounds(variant.Label) == 2.2m);
-
-                if (defaultVariant is not null)
-                {
-                    selectedVariants.TryAdd(product.Id, defaultVariant);
-                }
+                selectedVariants.TryAdd(product.Id, defaultVariant);
+            }
         }
-      
     }
 
     /// <summary>
