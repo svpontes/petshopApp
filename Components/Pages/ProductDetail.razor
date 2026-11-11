@@ -13,7 +13,7 @@
    an image gallery, size selection, quantity management, and user reviews.
 *@
 
-<PageTitle>@(product?.Name ?? "Product Details") - text page or app name</PageTitle>
+<PageTitle>@(product?.Name ?? "Product Details") - PetShopApp</PageTitle>
 
 @if (product == null)
 {
@@ -79,25 +79,42 @@ else
                 </div>
 
                 @* Dynamic Price Display (Calculates Quantity * Price) *@
-                <h4 class="fw-bold mb-4" style="color: #5f5e5e;">$@((product.Price * quantity).ToString("F2"))</h4>
+                <h4 class="fw-bold mb-4" style="color: #5f5e5e;">
+                $@(((SelectedVariant?.Price ?? product.Price) * quantity).ToString("F2"))
+                </h4>
 
                 <p class="lead mb-4 text-muted">@product.Description</p>
 
-                @* Size Selection Area *@
-                <div class="mb-4">
-                    <h5 class="fw-bold mb-3 @(showSizeWarning ? "text-danger" : "") text-uppercase">
-                        Size: @(showSizeWarning ? " (Required)" : "")
-                    </h5>
-                    <div class="d-flex gap-2 flex-wrap">
-                        @foreach (var size in product.AvailableSizes)
-                        {
-                            <button class="btn @(selectedSize == size ? "btn-dark" : "btn-outline-dark") px-4 py-2 fw-bold"
-                                    @onclick="() => SelectSize(size)">
-                                @size
-                            </button>
-                        }
+                @if (product.Variants.Count > 0 ||
+                (optionLabel is not null && product.AvailableSizes.Count > 0))
+                {
+                     var options = product.Variants.Count > 0
+                        ? product.Variants
+                            .OrderBy(v => GetWeightInPounds(v.Label))
+                            .ThenBy(v => v.Id)
+                            .Select(v => v.Label)
+                            .ToList()
+                        : product.AvailableSizes
+                            .OrderBy(GetWeightInPounds)
+                            .ToList();
+
+                    <div class="mb-4">
+                        <h5 class="fw-bold mb-3 @(showSizeWarning ? "text-danger" : "") text-uppercase">
+                            @(optionLabel ?? "Option"): @(showSizeWarning ? "(Required)" : "")
+                        </h5>
+
+                        <div class="d-flex gap-2 flex-wrap">
+                            @foreach (var option in options)
+                            {
+                                <button type="button"
+                                        class="btn @(selectedSize == option ? "btn-dark" : "btn-outline-dark") px-4 py-2 fw-bold"
+                                        @onclick="() => SelectSize(option)">
+                                    @option
+                                </button>
+                            }
+                        </div>
                     </div>
-                </div>
+                }   
 
                 @* Quantity Adjustment Controls *@
                 <div class="mb-4">
@@ -122,6 +139,13 @@ else
                 }
             </div>
         </div>
+        @if (!string.IsNullOrWhiteSpace(product.MoreInformation))
+            {
+                <section class="mt-5 border-top pt-4">
+                    <h3 class="fw-bold">More Information</h3>
+                    <p style="white-space: pre-line;">@product.MoreInformation</p>
+                </section>
+            }
 
         @* --- REVIEWS SECTION --- *@
         <div class="mt-5 border-top pt-5">
@@ -180,7 +204,10 @@ else
 
     // State management variables
     private Product? product;
-    private string selectedSize = "";
+    private string? optionLabel;
+    private string selectedSize = string.Empty;
+    private ProductVariant? SelectedVariant =>
+    product?.Variants.FirstOrDefault(v => v.Label == selectedSize);
     private bool showSizeWarning = false;
     private bool showSuccessMessage = false;
     private string currentMainImageUrl = string.Empty;
@@ -196,14 +223,19 @@ else
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        product = await DbContext.Products.FirstOrDefaultAsync(p => p.Id == Id);
+        product = await DbContext.Products
+        .Include(p => p.Variants)
+        .FirstOrDefaultAsync(p => p.Id == Id);
 
         if (product != null)
         {
             // Set defaults if data is missing
-            if (string.IsNullOrWhiteSpace(product.ImageUrl)) product.ImageUrl = "/images/placeholder.png";
-            if (product.AvailableSizes == null || !product.AvailableSizes.Any())
-                product.AvailableSizes = new List<string> { "S", "M", "L", "XL" };
+            optionLabel = product.Category?.Trim().ToUpperInvariant() switch
+            {
+                "CLOTHING" => "Size",
+                "FOOD" => "Bag Weight",
+                _ => null
+            };
 
             currentMainImageUrl = GetImageUrl(product.ImageUrl);
 
@@ -274,22 +306,62 @@ else
     /// <summary>
     /// Validates and adds the current selection to the persistent CartService.
     /// </summary>
+
     private async Task AddToCart()
     {
-        if (string.IsNullOrEmpty(selectedSize)) { showSizeWarning = true; return; }
-        if (product == null) return;
+    var currentProduct = product;
+    if (currentProduct is null)
+        return;
 
-        CartService.AddToCart(product, selectedSize, quantity);
-        showSuccessMessage = true;
-        await Task.Delay(1000); // Visual feedback duration
-        showSuccessMessage = false;
-        StateHasChanged();
+    var variant = currentProduct.Variants
+        .FirstOrDefault(v => v.Label == selectedSize);
+
+    var hasVariants = currentProduct.Variants.Count > 0;
+    var requiresLegacyOption = !hasVariants &&
+                               optionLabel is not null &&
+                               currentProduct.AvailableSizes.Count > 0;
+
+    if ((hasVariants && variant is null) ||
+        (requiresLegacyOption && !currentProduct.AvailableSizes.Contains(selectedSize)))
+    {
+        showSizeWarning = true;
+        return;
     }
 
+    CartService.AddToCart(
+        currentProduct,
+        variant?.Label ?? (requiresLegacyOption ? selectedSize : string.Empty),
+        quantity,
+        variant);
+
+    showSuccessMessage = true;
+    await Task.Delay(1000);
+    showSuccessMessage = false;
+    StateHasChanged();
+    
+    }    
+    private static decimal GetWeightInPounds(string label)
+    {
+    var text = label.Trim();
+
+    if (text.EndsWith(" lb", StringComparison.OrdinalIgnoreCase) &&
+        decimal.TryParse(
+            text[..^3].Trim(),
+            System.Globalization.NumberStyles.AllowDecimalPoint,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var weight))
+    {
+        return weight;
+    }
+
+    return decimal.MaxValue;
+    }
     private static string GetImageUrl(string? url) => string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
 
     /// <summary>
     /// Garbage collection: unsubscribes from the event to prevent memory leaks.
     /// </summary>
     public void Dispose() => CartService.OnChange -= HandleCartChanged;
+    }   
+    
 }
