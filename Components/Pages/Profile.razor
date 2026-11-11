@@ -38,38 +38,46 @@ else
 
                         <div class="mb-3">
                             <label class="fw-bold text-secondary text-uppercase x-small">Full Name</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Name" class="form-control form-control-sm rounded-0 border-dark" />
+                            <InputText @bind-Value="AuthService.CurrentUser.Name"
+                                       class="form-control form-control-sm rounded-0 border-dark" />
                         </div>
 
                         <div class="mb-3">
                             <label class="fw-bold text-secondary text-uppercase x-small">Email (Read-only)</label>
-                            <input type="text" value="@AuthService.CurrentUser.Email" class="form-control form-control-sm rounded-0 bg-light" disabled />
+                            <input type="text" value="@AuthService.CurrentUser.Email"
+                                   class="form-control form-control-sm rounded-0 bg-light" disabled />
                         </div>
 
                         <div class="mb-3">
                             <label class="fw-bold text-secondary text-uppercase x-small">Phone</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Phone" class="form-control form-control-sm rounded-0 border-dark" placeholder="Enter phone" />
+                            <InputText @bind-Value="AuthService.CurrentUser.Phone"
+                                       class="form-control form-control-sm rounded-0 border-dark" placeholder="Enter phone" />
                         </div>
 
                         <div class="mb-3">
                             <label class="fw-bold text-secondary text-uppercase x-small">Shipping Address</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Address" class="form-control form-control-sm rounded-0 border-dark" placeholder="Street name and number" />
+                            <InputText @bind-Value="AuthService.CurrentUser.Address"
+                                       class="form-control form-control-sm rounded-0 border-dark"
+                                       placeholder="Street name and number" />
                         </div>
 
                         <div class="row mb-3">
                             <div class="col-6">
                                 <label class="fw-bold text-secondary text-uppercase x-small">City</label>
-                                <InputText @bind-Value="AuthService.CurrentUser.City" class="form-control form-control-sm rounded-0 border-dark" />
+                                <InputText @bind-Value="AuthService.CurrentUser.City"
+                                           class="form-control form-control-sm rounded-0 border-dark" />
                             </div>
                             <div class="col-6">
                                 <label class="fw-bold text-secondary text-uppercase x-small">Zip Code</label>
-                                <InputText @bind-Value="AuthService.CurrentUser.ZipCode" class="form-control form-control-sm rounded-0 border-dark" />
+                                <InputText @bind-Value="AuthService.CurrentUser.ZipCode"
+                                           class="form-control form-control-sm rounded-0 border-dark" />
                             </div>
                         </div>
 
                         <div class="mb-4">
                             <label class="fw-bold text-secondary text-uppercase x-small">Country</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Country" class="form-control form-control-sm rounded-0 border-dark" />
+                            <InputText @bind-Value="AuthService.CurrentUser.Country"
+                                       class="form-control form-control-sm rounded-0 border-dark" />
                         </div>
 
                         <button type="submit" class="btn btn-dark btn-sm w-100 rounded-0 fw-bold mb-2 py-2">
@@ -77,7 +85,8 @@ else
                         </button>
                     </EditForm>
 
-                    <button class="btn btn-outline-danger btn-sm w-100 rounded-0 fw-bold py-2" @onclick="Logout">LOGOUT</button>
+                    <button class="btn btn-outline-danger btn-sm w-100 rounded-0 fw-bold py-2"
+                            @onclick="Logout">LOGOUT</button>
                     
                     @if (!string.IsNullOrEmpty(statusMessage))
                     {
@@ -96,8 +105,15 @@ else
 }
 
 <style>
-    .x-small { font-size: 0.65rem; letter-spacing: 1px; }
-    .form-control:focus { border-color: #CCFF00; box-shadow: none; }
+    .x-small {
+        font-size: 0.65rem;
+        letter-spacing: 1px;
+    }
+
+    .form-control:focus {
+        border-color: #CCFF00;
+        box-shadow: none;
+    }
 </style>
 
 @code {
@@ -108,46 +124,54 @@ else
     /// Persists the updated user information to the SQLite database.
     /// </summary>
     private async Task HandleUpdate()
-{
-    isSaving = true;
-    statusMessage = "";
-
-    try 
     {
-        if (AuthService.CurrentUser != null)
+        isSaving = true;
+        statusMessage = "";
+
+        try
         {
-            // 1. Verificamos se já existe uma instância do mesmo utilizador sendo rastreada
-            var trackedUser = DbContext.Users.Local.FirstOrDefault(u => u.Id == AuthService.CurrentUser.Id);
-            
-            if (trackedUser != null)
+            if (AuthService.CurrentUser != null)
             {
-                // Se existir, "desvinculamos" a instância antiga da memória temporária (Detach)
-                DbContext.Entry(trackedUser).State = EntityState.Detached;
-            }
-
-            // 2. Agora anexamos a versão atualizada do AuthService.CurrentUser
-            DbContext.Users.Update(AuthService.CurrentUser);
+                // 1. Verificamos se já existe uma instância do mesmo utilizador sendo rastreada
+                var trackedUser = DbContext.Users.Local.FirstOrDefault(u => u.Id == AuthService.CurrentUser.Id);
             
-            // 3. Persistimos no SQLite
-            await DbContext.SaveChangesAsync();
+                if (trackedUser != null)
+                {
+                    // Se existir, "desvinculamos" a instância antiga da memória temporária (Detach)
+                    DbContext.Entry(trackedUser).State = EntityState.Detached;
+                }
 
-            statusMessage = "Profile updated successfully!";
+                // 2. Agora anexamos a versão atualizada do AuthService.CurrentUser
+                DbContext.Users.Update(AuthService.CurrentUser);
+            
+                // 3. Persistimos no SQLite
+                await DbContext.SaveChangesAsync();
+
+                statusMessage = "Profile updated successfully!";
+            }
         }
-    }
-    catch (Exception ex)
-    {
-        statusMessage = "Database Error: " + ex.Message;
-        // Opcional: Console.WriteLine(ex.ToString()); para debugar
-    }
-    finally
-    {
-        isSaving = false;
-    }
+        catch (Exception ex)
+        {
+            statusMessage = "Database Error: " + ex.Message;
+            // Opcional: Console.WriteLine(ex.ToString()); para debugar
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 
     private void Logout()
     {
         AuthService.Logout();
         NavManager.NavigateTo("/", forceLoad: true);
+    }
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.IsLoggedIn)
+        {
+            NavManager.NavigateTo("/login");
+        }
     }
 }
