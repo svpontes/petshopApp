@@ -12,7 +12,7 @@
 *@
 
 <div class="container mt-5 pt-5 pb-5">
-    <h2 class="fw-bold mb-4 text-uppercase" style="letter-spacing: 2px;">
+    <h2 class="fw-bold mb-4 text-uppercase text-center" style="letter-spacing: 2px;">
         Your Shopping Bag
     </h2>
 
@@ -140,11 +140,12 @@
     {
         @* --- EMPTY CART FALLBACK --- *@
         <div class="text-center py-5">
-            <i class="bi bi-bag-x display-1 text-secondary"></i>
+            <img src="/images/petBkgCartEmpty.png"
+                 alt=""
+                 class="img-fluid d-block mx-auto mb-4"
+                 style="width: 360px; max-width: 100%; height: auto; transform: translateX(-10px)" />
 
-            <h3 class="mt-4 fw-bold">
-                Your bag is empty.
-            </h3>
+            <h3 class="fw-bold">Your bag is empty.</h3>
 
             <p class="text-secondary">
                 Browse our pet products and add something to your cart.
