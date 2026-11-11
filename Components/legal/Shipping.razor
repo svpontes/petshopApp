@@ -1,44 +1,77 @@
 @page "/shipping-policy"
 
-<div class="container mt-5 pt-5 pb-5">
-    <h1 class="fw-bold text-uppercase mb-5" style="letter-spacing: 3px;">Shipping Policy</h1>
-    
-    <div class="row">
-        <div class="col-lg-8">
+<PageTitle>Shipping Policy | Pet Love Care</PageTitle>
+
+<div class="container mt-5 pt-5 pb-5 shipping-page">
+    <h1 class="fw-bold text-uppercase mb-5" style="letter-spacing: 3px;">
+        Shipping Policy
+    </h1>
+
+    <div class="row g-4 align-items-center">
+        <div class="col-12 col-lg-7">
             <section class="mb-5">
-                <h5 class="fw-bold text-uppercase">Processing Time</h5>
-                <p class="text-secondary">Orders are processed within 1-3 business days. Orders placed on weekends or holidays will be processed the following business day.</p>
+                <h2 class="h5 fw-bold text-uppercase">Processing Time</h2>
+                <p class="text-secondary">
+                    Orders are processed within 1–3 business days. Orders placed
+                    on weekends or holidays will be processed the following
+                    business day.
+                </p>
             </section>
 
             <section class="mb-5">
-                <h5 class="fw-bold text-uppercase">Shipping Rates & Estimates</h5>
-                <table class="table table-borderless mt-3">
-                    <thead class="border-bottom">
-                        <tr class="small text-muted">
-                            <th>REGION</th>
-                            <th>ESTIMATED DELIVERY</th>
-                            <th>COST</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>European Union</td>
-                            <td>3-7 Business Days</td>
-                            <td>Free</td>
-                        </tr>
-                        <tr>
-                            <td>United States</td>
-                            <td>7-12 Business Days</td>
-                            <td>€15.00</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <h2 class="h5 fw-bold text-uppercase">
+                    Shipping Rates &amp; Estimates
+                </h2>
+
+                <div class="table-responsive">
+                    <table class="table table-borderless mt-3">
+                        <thead class="border-bottom">
+                            <tr class="small text-muted">
+                                <th scope="col">REGION</th>
+                                <th scope="col">ESTIMATED DELIVERY</th>
+                                <th scope="col">COST</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>European Union</td>
+                                <td>3–7 Business Days</td>
+                                <td>Free</td>
+                            </tr>
+                            <tr>
+                                <td>United States</td>
+                                <td>7–12 Business Days</td>
+                                <td>€15.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section>
-                <h5 class="fw-bold text-uppercase">International Orders</h5>
-                <p class="text-secondary">Import duties, taxes, and charges are not included in the item price or shipping cost. These charges are the buyer's responsibility.</p>
+                <h2 class="h5 fw-bold text-uppercase">International Orders</h2>
+                <p class="text-secondary mb-0">
+                    Import duties, taxes, and charges are not included in the
+                    item price or shipping cost. These charges are the buyer's
+                    responsibility.
+                </p>
             </section>
+        </div>
+
+        <div class="col-12 col-lg-5">
+            <img src="/images/petBkgShippingPng.png"
+                 alt=""
+                 class="shipping-pet" />
         </div>
     </div>
 </div>
+
+<style>
+    .shipping-page .shipping-pet {
+        display: block;
+        width: 100%;
+        max-width: 440px;
+        height: auto;
+        margin-inline: auto;
+    }
+</style>
