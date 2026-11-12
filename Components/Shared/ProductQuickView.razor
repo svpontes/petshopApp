@@ -51,21 +51,27 @@
             <hr />
 
             @* --- SIZE SELECTION LOGIC --- *@
-            <div class="mb-4">
-                <label class="fw-bold small text-uppercase mb-2">Select Size:</label>
-                <div class="d-flex gap-2 flex-wrap">
-                    @foreach (var size in Product.AvailableSizes)
+            @if (Product.AvailableSizes.Count > 0)
+            {
+                <div class="mb-4">
+                    <label class="fw-bold small text-uppercase mb-2">Select Size:</label>
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        @foreach (var size in Product.AvailableSizes)
+                        {
+                            <button class="btn @(selectedSize == size ? "btn-dark" : "btn-outline-dark") btn-sm px-3 fw-bold rounded-0"
+                                    @onclick="() => selectedSize = size">
+                                @size
+                            </button>
+                        }
+                    </div>
+
+                    @if (showWarning)
                     {
-                        @* Toggles 'btn-dark' class if the size is currently selected *@
-                        <button class="btn @(selectedSize == size ? "btn-dark" : "btn-outline-dark") btn-sm px-3 fw-bold rounded-0" 
-                                @onclick="() => selectedSize = size">
-                            @size
-                        </button>
+                        <small class="text-danger d-block mt-1">Please select a size</small>
                     }
                 </div>
-                @* Validation Warning if user attempts to add to bag without selecting a size *@
-                @if (showWarning) { <small class="text-danger d-block mt-1">Please select a size</small> }
-            </div>
+            }
 
             @* --- QUANTITY SELECTOR --- *@
             <div class="mb-4">
@@ -123,12 +129,21 @@
     /// <summary>
     /// Validates selection and interacts with the CartService to persist the choice.
     /// </summary>
-    private void HandleAdd() {
-        if (string.IsNullOrEmpty(selectedSize)) { showWarning = true; return; }
-        if (Product != null) {
-            CartService.AddToCart(Product, selectedSize, qty);
-            Close();
+    private void HandleAdd()
+    {
+        if (Product == null)
+            return;
+
+        // A size is only required when options are available.
+        if (Product.AvailableSizes.Count > 0 &&
+            !Product.AvailableSizes.Contains(selectedSize))
+        {
+            showWarning = true;
+            return;
         }
+
+        CartService.AddToCart(Product, selectedSize, qty);
+        Close();
     }
 
     // --- HELPER METHODS FOR PARENT INTEGRATION ---
