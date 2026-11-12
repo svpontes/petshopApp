@@ -1,164 +1,225 @@
 @using PetShopApp.Models
 @inject PetShopApp.Services.CartService CartService
 
-@* --- PRODUCT QUICK VIEW COMPONENT ---
-   Purpose: Provides a side-panel (Offcanvas) for users to quickly select sizes, 
-   view images, and add products to the cart without leaving the current page.
-*@
+<div class="offcanvas offcanvas-end @(Show ? "show" : "")"
+     tabindex="-1"
+     aria-labelledby="quick-add-title"
+     style="visibility: @(Show ? "visible" : "hidden"); width: min(450px, 100vw); border-left: 1px solid #ddd;">
 
-<div class="offcanvas offcanvas-end @(Show ? "show" : "")" tabindex="-1" 
-     style="visibility: @(Show ? "visible" : "hidden"); width: 450px; border-left: 1px solid #ddd;">
-    
     <div class="offcanvas-header border-bottom">
-        <h5 class="fw-bold text-uppercase mb-0">Quick Add</h5>
-        <button type="button" class="btn-close text-reset" @onclick="Close"></button>
+        <h5 id="quick-add-title" class="fw-bold text-uppercase mb-0">Quick Add</h5>
+        <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
     </div>
 
     <div class="offcanvas-body">
-        @if (Product != null)
+        @if (Product is { } product)
         {
-            @* --- IMAGE CAROUSEL SECTION --- *@
-            <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
+            
+            var secondaryImages = product.SecondaryImageUrls?
+                .Where(url => !string.IsNullOrWhiteSpace(url))
+                .ToArray() ?? Array.Empty<string>();
+
+            var carouselId = $"quick-add-carousel-{product.Id}";
+        
+
+        if (secondaryImages.Length == 0)
+        {
+            <img src="@GetImageUrl(product.ImageUrl)"
+                alt="@product.Name"
+                class="img-fluid d-block mx-auto" />
+        }
+        else
+        {
+            <div id="@carouselId" class="carousel slide quick-add-carousel">
                 <div class="carousel-inner">
                     <div class="carousel-item active">
-                        <img src="@GetImageUrl(Product.ImageUrl)" class="d-block w-100 product-img" alt="@Product.Name" />
+                        <img src="@GetImageUrl(product.ImageUrl)"
+                            alt="@product.Name"
+                            class="d-block w-100" />
                     </div>
 
-                    @if (Product.SecondaryImageUrls != null && Product.SecondaryImageUrls.Any())
+                    @foreach (var url in secondaryImages)
                     {
-                        @foreach (var img in Product.SecondaryImageUrls)
-                        {
-                            <div class="carousel-item">
-                                <img src="@GetImageUrl(img)" class="d-block w-100 product-img" alt="@Product.Name" />
-                            </div>
-                        }
+                        <div class="carousel-item">
+                            <img src="@GetImageUrl(url)"
+                                alt="@product.Name"
+                                class="d-block w-100" />
+                        </div>
                     }
                 </div>
 
-                <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon"></span>
+                <button class="carousel-control-prev" type="button"
+                        data-bs-target="@($"#{carouselId}")" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous image</span>
                 </button>
-                <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
-                    <span class="carousel-control-next-icon"></span>
+
+                <button class="carousel-control-next" type="button"
+                        data-bs-target="@($"#{carouselId}")" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next image</span>
                 </button>
             </div>
+            }
+                  
 
-            @* --- PRODUCT INFO --- *@
-            <h4 class="fw-bold text-uppercase mt-3">@Product.Name</h4>
-            <h5 class="text-secondary mb-3">@Product.Price.ToString("C")</h5>
-            <p class="small text-muted">@Product.Description</p>
+            <h4 class="fw-bold text-uppercase mt-3">@product.Name</h4>
+            <p class="small text-muted">@product.Description</p>
+            <h5 class="text-secondary mb-3">@UnitPrice.ToString("C")</h5>
 
             <hr />
 
-            @* --- SIZE SELECTION LOGIC --- *@
-            <div class="mb-4">
-                <label class="fw-bold small text-uppercase mb-2">Select Size:</label>
-                <div class="d-flex gap-2 flex-wrap">
-                    @foreach (var size in Product.AvailableSizes)
+            @if (HasVariants || HasSizes)
+            {
+                <div class="mb-4">
+                    <div class="fw-bold small text-uppercase mb-2">
+                        @(HasVariants ? "Select an option:" : "Select size:")
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        @if (HasVariants)
+                        {
+                            @foreach (var variant in product.Variants.OrderBy(v => GetWeightInPounds(v.Label)))
+                            {
+                                <button type="button"
+                                        class="btn btn-sm @(selectedVariant?.Id == variant.Id ? "btn-dark" : "btn-outline-dark")"
+                                        aria-pressed="@(selectedVariant?.Id == variant.Id ? "true" : "false")"
+                                        @onclick="() => { selectedVariant = variant; showWarning = false; }">
+                                    @variant.Label
+                                </button>
+                            }
+                        }
+                        else
+                        {
+                            @foreach (var size in product.AvailableSizes)
+                            {
+                                <button type="button"
+                                        class="btn btn-sm @(selectedSize == size ? "btn-dark" : "btn-outline-dark")"
+                                        aria-pressed="@(selectedSize == size ? "true" : "false")"
+                                        @onclick="() => { selectedSize = size; showWarning = false; }">
+                                    @size
+                                </button>
+                            }
+                        }
+                    </div>
+
+                    @if (showWarning)
                     {
-                        @* Toggles 'btn-dark' class if the size is currently selected *@
-                        <button class="btn @(selectedSize == size ? "btn-dark" : "btn-outline-dark") btn-sm px-3 fw-bold rounded-0" 
-                                @onclick="() => selectedSize = size">
-                            @size
-                        </button>
+                        <small class="text-danger d-block mt-1" role="alert">
+                            @(HasVariants ? "Please select an option." : "Please select a size.")
+                        </small>
                     }
                 </div>
-                @* Validation Warning if user attempts to add to bag without selecting a size *@
-                @if (showWarning) { <small class="text-danger d-block mt-1">Please select a size</small> }
-            </div>
+            }
 
-            @* --- QUANTITY SELECTOR --- *@
             <div class="mb-4">
-                <label class="fw-bold small text-uppercase mb-2">Quantity:</label>
+                <label for="quick-add-quantity" class="fw-bold small text-uppercase mb-2">
+                    Quantity:
+                </label>
                 <div class="input-group" style="width: 120px;">
-                    <button class="btn btn-outline-dark btn-sm" @onclick="() => { if(qty > 1) qty--; }">-</button>
-                    <input type="text" class="form-control form-control-sm text-center border-dark" value="@qty" readonly />
-                    <button class="btn btn-outline-dark btn-sm" @onclick="() => qty++">+</button>
+                    <button type="button"
+                            class="btn btn-outline-dark btn-sm"
+                            aria-label="Decrease quantity"
+                            disabled="@(qty <= 1)"
+                            @onclick="() => { if (qty > 1) qty--; }">−</button>
+                    <input id="quick-add-quantity"
+                           type="text"
+                           class="form-control form-control-sm text-center border-dark"
+                           value="@qty"
+                           readonly />
+                    <button type="button"
+                            class="btn btn-outline-dark btn-sm"
+                            aria-label="Increase quantity"
+                            @onclick="() => qty++">+</button>
                 </div>
             </div>
 
-            @* --- SUBMIT ACTION --- *@
-            <button class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 shadow-sm" @onclick="HandleAdd">
-                Add to Bag — @((Product.Price * qty).ToString("C"))
+            <button type="button"
+                    class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 shadow-sm"
+                    @onclick="HandleAdd">
+                Add to Bag — @((UnitPrice * qty).ToString("C"))
             </button>
         }
     </div>
 </div>
 
-@* Background overlay for the Offcanvas panel *@
 @if (Show)
 {
     <div class="offcanvas-backdrop fade show" @onclick="Close"></div>
 }
 
 @code {
-    // Parameters received from the parent page (Catalog)
     [Parameter] public bool Show { get; set; }
     [Parameter] public Product? Product { get; set; }
+    [Parameter] public ProductVariant? InitialVariant { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
 
-    // Local UI State
+    private ProductVariant? selectedVariant;
     private string selectedSize = "";
     private int qty = 1;
-    private bool showWarning = false;
+    private bool showWarning;
 
-    /// <summary>
-    /// Resets the internal state and notifies the parent to hide the component.
-    /// </summary>
-    private void Close() { 
-        selectedSize = ""; 
-        qty = 1; 
-        showWarning = false;
-        OnClose.InvokeAsync(); 
-    }
-
-    /// <summary>
-    /// Validates null/empty URLs and returns a default placeholder image.
-    /// </summary>
-    private static string GetImageUrl(string? url)
-    {
-        return string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
-    }
-
-    /// <summary>
-    /// Validates selection and interacts with the CartService to persist the choice.
-    /// </summary>
-    private void HandleAdd() {
-        if (string.IsNullOrEmpty(selectedSize)) { showWarning = true; return; }
-        if (Product != null) {
-            CartService.AddToCart(Product, selectedSize, qty);
-            Close();
-        }
-    }
-
-    // --- HELPER METHODS FOR PARENT INTEGRATION ---
-    private List<Product> products = new();
-    private bool isPanelOpen = false;
-    private Product? selectedProduct;
+    private bool HasVariants => Product?.Variants.Any() == true;
+    private bool HasSizes => Product?.AvailableSizes.Any() == true;
+    private decimal UnitPrice => selectedVariant?.Price ?? Product?.Price ?? 0m;
 
     protected override void OnInitialized()
     {
-        // For testing purposes, mock products can be loaded here
-        products = MockData.GetMockProducts();
+        if (Product is not { } product)
+        return;
+
+        selectedVariant = product.Variants
+        .FirstOrDefault(v => v.Id == InitialVariant?.Id)
+        ?? product.Variants.FirstOrDefault(v => GetWeightInPounds(v.Label) == 2.2m);
     }
 
-    /// <summary>
-    /// Logic to trigger the panel from a list view.
-    /// </summary>
-    private void OpenQuickView(Product product)
+    private Task Close()
     {
-        selectedProduct = product;
-        isPanelOpen = true;
-        StateHasChanged();
+        selectedVariant = null;
+        selectedSize = "";
+        qty = 1;
+        showWarning = false;
+        return OnClose.InvokeAsync();
     }
 
-    /// <summary>
-    /// Cleanup logic for panel closure.
-    /// </summary>
-    private void HandleClose()
+    private async Task HandleAdd()
     {
-        isPanelOpen = false;
-        selectedProduct = null;
-        StateHasChanged();
+        if (Product is not { } product)
+            return;
+
+        if (HasVariants && selectedVariant is null)
+        {
+            showWarning = true;
+            return;
+        }
+
+        if (!HasVariants && HasSizes && !product.AvailableSizes.Contains(selectedSize))
+        {
+            showWarning = true;
+            return;
+        }
+
+        var option = selectedVariant?.Label ?? (HasSizes ? selectedSize : "");
+        CartService.AddToCart(product, option, qty, selectedVariant);
+        await Close();
     }
+    private static decimal GetWeightInPounds(string label)
+    {
+    var text = label.Trim();
+
+    if (text.EndsWith(" lb", StringComparison.OrdinalIgnoreCase) &&
+        decimal.TryParse(
+            text[..^3].Trim(),
+            System.Globalization.NumberStyles.AllowDecimalPoint,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var weight))
+    {
+        return weight;
+    }
+
+    return decimal.MaxValue;
+    }
+
+    private static string GetImageUrl(string? url) =>
+        string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
 }

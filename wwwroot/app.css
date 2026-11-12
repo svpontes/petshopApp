@@ -108,6 +108,16 @@ h1:focus {
     z-index: -1;
 }
 
+.quick-add-carousel .carousel-control-prev-icon,
+.quick-add-carousel .carousel-control-next-icon {
+    filter: brightness(0);
+}
+
+.quick-add-carousel .carousel-control-prev,
+.quick-add-carousel .carousel-control-next {
+    opacity: 1;
+}
+
 @media (max-width: 991.98px) {
     .pet-page::before {
         display: none;
