@@ -191,7 +191,7 @@ h1:focus {
 /**** BANNER - TABLET ****/
 @media (min-width: 768px) {
   .banner {
-    padding: 20px 0;
+    padding-top: 20px;
     position: relative;
 
     .banner-img {
