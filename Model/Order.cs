@@ -12,6 +12,9 @@ namespace PetShopApp.Models
         // Unique identifier for the Order (Primary Key)
         public int Id { get; set; }
 
+        // References the signed-in customer (existing nullable SQLite column).
+        public int? UserId { get; set; }
+
         // Timestamp of when the order was successfully placed
         public DateTime OrderDate { get; set; } = DateTime.Now;
 
