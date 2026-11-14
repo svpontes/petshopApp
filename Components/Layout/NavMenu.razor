@@ -15,8 +15,10 @@
         </li>
         <li class="d-flex align-items-center">
             <NavLink href="@(AuthService.IsLoggedIn ? "/profile" : "/login")" class="text-decoration-none"
-                     aria-label="My Account">
-                <i class="bi bi-person"></i>
+                     aria-label="My Account" style="position: relative; display: inline-flex;
+                align-items: center; justify-content: center;
+                width: 32px; height: 36px;">
+                <i class="bi bi-person" style="font-size: 30px;"></i>
             </NavLink>
         </li>
     </ul>
