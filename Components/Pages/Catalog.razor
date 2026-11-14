@@ -83,11 +83,8 @@
 
                                 @* Triggers the Quick View panel instead of full navigation *@
                                 <button class="btn btn-dark rounded-0"
-                                    disabled="@(product.Variants.Count > 0 && !selectedVariants.ContainsKey(product.Id))"
-                                    @onclick="() => AddFromCatalog(product)">
-                                    @(product.Variants.Count > 0 && !selectedVariants.ContainsKey(product.Id)
-                                    ? "SELECT AN OPTION"
-                                    : "ADD TO CART")
+                                    @onclick="() => OpenQuickView(product)">
+                                    ADD TO CART
                                 </button>
                                 
                             </div>
@@ -100,9 +97,14 @@
 </section>
 
 @* Shared component for rapid purchasing without page navigation *@
-<ProductQuickView Show="isPanelOpen"
-                  Product="selectedProduct"
-                  OnClose="HandleClose" />
+@if (isPanelOpen && selectedProduct is not null)
+{
+    <ProductQuickView @key="selectedProduct.Id"
+                      Show="true"
+                      Product="selectedProduct"
+                      InitialVariant="selectedVariants.GetValueOrDefault(selectedProduct.Id)"
+                      OnClose="HandleClose" />
+}
 
 @code {
     private List<Product> products = new();
