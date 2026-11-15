@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using PetShopApp.Data;
 using PetShopApp.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace PetShopApp.Services
 {
@@ -43,15 +44,31 @@ namespace PetShopApp.Services
             // Create a temporary scope to resolve the ApplicationDbContext
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
+            var normalizedEmail = email.Trim().ToLowerInvariant();
             // Retrieve the user from the database, including their OrderHistory 
             // to ensure it is available on the Profile page.
             var user = await context.Users
                 .Include(u => u.OrderHistory)
-                .FirstOrDefaultAsync(u => u.Email == email && u.Password == password);
+                .FirstOrDefaultAsync(u => u.Email.Trim().ToLower() == normalizedEmail);
 
             if (user is null)
                 return false;
+
+            var passwordHasher = new PasswordHasher<User>();
+            PasswordVerificationResult result;
+            try
+            {
+                result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
+            }
+
+            catch
+            {
+                //legacy account: require a password reset instead of accepting plaintext.
+                return false;
+            }
+
+            if (result == PasswordVerificationResult.Failed)
+            return false;
 
             // Update session state
             CurrentUser = user;
