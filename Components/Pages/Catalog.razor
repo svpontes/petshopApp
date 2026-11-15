@@ -79,7 +79,7 @@
                                     ? chosen.Price
                                     : product.Price;
                                 }
-                                <span class="fw-bold">$@displayPrice.ToString("0.00")</span>
+                                <span> <PromotionPrice RegularUnitPrice="displayPrice"></PromotionPrice> </span>
 
                                 @* Triggers the Quick View panel instead of full navigation *@
                                 <button class="btn btn-dark rounded-0"

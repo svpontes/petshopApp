@@ -470,3 +470,9 @@ h1:focus {
     }
   }
 }
+
+/****PROMOTION CSS*******/
+.promotion-original-price {
+    text-decoration-color: #c1121f;
+    text-decoration-thickness: 2px;
+}

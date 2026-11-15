@@ -44,7 +44,7 @@ namespace PetShopApp.Services
                     return;
 
                 var option = variant?.Label ?? size ?? string.Empty;
-                var unitPrice = variant?.Price ?? product.Price;
+                var unitPrice = StorePromotion.GetSaleUnitPrice(variant?.Price ?? product.Price);
 
                 var existingItem = _cartItems.FirstOrDefault(i =>
                     i.Product.Id == product.Id && i.Size == option);
