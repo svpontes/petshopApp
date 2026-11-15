@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using PetShopApp.Services
 
 <PageTitle>Home</PageTitle>
 
@@ -7,9 +8,9 @@
     <div class="banner-callToAction d-flex">
         <img class="callToAction-img" src="/images/pet-love-care-logo-letters-red.webp" alt="Pet Love Care logo in red." />
         <button>
-            <a href="/catalog"><p>ALL PRODUCTS WITH <span>10% OFF</span></p></a>
+            <a href="/catalog"><p>ALL PRODUCTS WITH <span>@(StorePromotion.DiscountPercent)% OFF</span></p></a>
         </button>
-        <p class="callToAction-pOff">10% OFF</p>
+        <p class="callToAction-pOff">@(StorePromotion.DiscountPercent)% OFF</p>
     </div>
 </div>
 

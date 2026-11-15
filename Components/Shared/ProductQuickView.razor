@@ -7,7 +7,9 @@
      style="visibility: @(Show ? "visible" : "hidden"); width: min(450px, 100vw); border-left: 1px solid #ddd;">
 
     <div class="offcanvas-header border-bottom">
-        <h5 id="quick-add-title" class="fw-bold text-uppercase mb-0">Quick Add</h5>
+        <h5 class="fw-bold text-uppercase mb-0">
+            Quick Add
+        </h5>
         <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
     </div>
 
@@ -64,8 +66,15 @@
                   
 
             <h4 class="fw-bold text-uppercase mt-3">@product.Name</h4>
-            <p class="small text-muted">@product.Description</p>
-            <h5 class="text-secondary mb-3">@UnitPrice.ToString("C")</h5>
+
+                @if (!string.IsNullOrWhiteSpace(product.Description))
+                    {
+                        <p class="small text-muted mb-2">@product.Description</p>
+                }
+
+                <div class="mb-3">
+                <PromotionPrice RegularUnitPrice="@RegularUnitPrice" />
+                </div>
 
             <hr />
 
@@ -161,7 +170,11 @@
 
     private bool HasVariants => Product?.Variants.Any() == true;
     private bool HasSizes => Product?.AvailableSizes.Any() == true;
-    private decimal UnitPrice => selectedVariant?.Price ?? Product?.Price ?? 0m;
+    private decimal RegularUnitPrice =>
+    selectedVariant?.Price ?? Product?.Price ?? 0m;
+
+    private decimal UnitPrice =>
+    PetShopApp.Services.StorePromotion.GetSaleUnitPrice(RegularUnitPrice);
 
     protected override void OnInitialized()
     {

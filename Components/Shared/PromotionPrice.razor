@@ -1,0 +1,18 @@
+@using PetShopApp.Services
+
+<span class="d-inline-flex flex-wrap align-items-baseline gap-2">
+    <span class="visually-hidden">Regular price:</span>
+    <s class="promotion-original-price">
+        @((RegularUnitPrice * Quantity).ToString("C"))
+    </s>
+
+    <span class="visually-hidden">Sale price:</span>
+    <strong>
+        @((StorePromotion.GetSaleUnitPrice(RegularUnitPrice) * Quantity).ToString("C"))
+    </strong>
+</span>
+
+@code {
+    [Parameter] public decimal RegularUnitPrice { get; set; }
+    [Parameter] public int Quantity { get; set; } = 1;
+}
