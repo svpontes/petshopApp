@@ -10,54 +10,58 @@
 
 <div class="row justify-content-center align-items-center min-vh-100" style="padding-top: 24px;">
     <div class="col-md-4">
-        @* Branded Login Card: Uses a minimalist black/white aesthetic consistent with BluntWear *@
         <div class="card border-0 shadow-lg p-4 bg-black text-white rounded-0">
             <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">LOGIN</h2>
-            
-            @* User Input Fields with Two-Way Data Binding (@bind) *@
-            <div class="mb-3">
-                <label class="small fw-bold text-secondary">EMAIL</label>
-                <input type="email" @bind="email"
-                       class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
-            </div>
 
-            <div class="mb-4">
-                <label class="small fw-bold text-secondary">PASSWORD</label>
-                <input type="password" @bind="password"
-                       class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
-                <a href="/forgot-password" class="hover-white small text-secondary text-decoration-none"
-                   text-align="right" style="float: right; margin-top: 5px;">
-                    Forgot password? Click Here!
-                </a>
-            </div>
-            
-            @* Error Feedback: Displayed only if the authentication service returns false *@
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger bg-transparent border-danger text-danger rounded-0 small py-2 mb-3">
-                    <i class="bi bi-exclamation-triangle me-2"></i> @errorMessage
+            <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
+                <div class="mb-3">
+                    <label for="login-email" class="small fw-bold text-secondary">EMAIL</label>
+                    <input id="login-email" type="email" @bind="email"
+                           autocomplete="username"
+                           class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
                 </div>
-            }
 
-            @* Submission Trigger *@
-            <button class="btn btn-light w-100 fw-bold py-2 rounded-0 mb-3" @onclick="HandleLogin">
-                ENTER my text name app or page Account
-            </button>
+                <div class="mb-4">
+                    <label for="login-password" class="small fw-bold text-secondary">PASSWORD</label>
+                    <input id="login-password" type="password" @bind="password"
+                           autocomplete="current-password"
+                           class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
+                    <a href="/forgot-password"
+                       class="d-block text-end mt-1 small text-secondary text-decoration-none hover-white">
+                        Forgot password? Click here!
+                    </a>
+                </div>
 
-            @* Navigation to Registration flow *@
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div role="alert" class="alert alert-danger bg-transparent border-danger text-danger rounded-0 small py-2 mb-3">
+                        <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
+                        @errorMessage
+                    </div>
+                }
+
+                <button type="submit"
+                        class="btn btn-light w-100 fw-bold py-2 rounded-0 mb-3"
+                        disabled="@isSigningIn">
+                    @(isSigningIn ? "SIGNING IN..." : "SIGN IN")
+                </button>
+            </form>
+
             <div class="text-center">
-                <a href="/register" class="text-secondary small text-decoration-none hover-white">Don't have an account?
-                    Sign Up</a>
-                </div>
+                <a href="/register" class="text-secondary small text-decoration-none hover-white">
+                    Don't have an account? Sign Up
+                </a>
             </div>
         </div>
     </div>
+</div>
 
 @code {
     // Local state variables for form inputs and feedback
     private string email = "";
     private string password = "";
     private string errorMessage = "";
+    private bool isSigningIn;
 
     /// <summary>
     /// Processes the login request.

@@ -86,7 +86,7 @@ else
                     </EditForm>
 
                     <button class="btn btn-outline-danger btn-sm w-100 rounded-0 fw-bold py-2"
-                            @onclick="Logout">LOGOUT</button>
+                            type="button" @onclick="Logout">LOGOUT</button>
                     
                     @if (!string.IsNullOrEmpty(statusMessage))
                     {
@@ -164,7 +164,7 @@ else
     private void Logout()
     {
         AuthService.Logout();
-        NavManager.NavigateTo("/", forceLoad: true);
+        NavManager.NavigateTo("/login");
     }
 
     protected override void OnInitialized()
