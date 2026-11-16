@@ -1,6 +1,8 @@
 @using PetShopApp.Data
 @using PetShopApp.Models
 @using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
 @inject ApplicationDbContext DbContext
 @inject PetShopApp.Services.AuthService AuthService
 @inject NavigationManager NavManager
@@ -77,46 +79,48 @@
 </div>
 
 @code {
-    // Local state variables for form handling
     private string name = "";
     private string email = "";
     private string password = "";
     private string errorMessage = "";
-    private bool isProcessing = false;
+    private bool isProcessing;
 
-    // Password strength state variables
-    private bool hasMinLength = false;
-    private bool hasUpperCase = false;
-    private bool hasNumber = false;
-    private bool hasSpecialChar = false;
+    private bool hasMinLength => password.Length >= 8;
+    private bool hasUpperCase => password.Any(char.IsUpper);
+    private bool hasNumber => password.Any(char.IsDigit);
+    private bool hasSpecialChar =>
+        password.Any(ch => !char.IsLetterOrDigit(ch) && !char.IsWhiteSpace(ch));
 
-    /// <summary>
-    /// Analyzes the password input in real-time to update the UI security checklist.
-    /// </summary>
     private void CheckPasswordStrength(ChangeEventArgs e)
     {
         password = e.Value?.ToString() ?? "";
-        
-        hasMinLength = password.Length >= 8;
-        hasUpperCase = password.Any(char.IsUpper);
-        hasNumber = password.Any(char.IsDigit);
-        hasSpecialChar = password.Any(ch => !char.IsLetterOrDigit(ch));
     }
 
-    /// <summary>
-    /// Handles the user registration logic, including validation, 
-    /// duplicate checks, and database persistence.
-    /// </summary>
     private async Task HandleRegister()
     {
-        // 1. BASIC VALIDATION: Check for empty fields
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        if (isProcessing)
+            return;
+
+        errorMessage = "";
+
+        var fullName = name.Trim();
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(fullName) ||
+            string.IsNullOrWhiteSpace(normalizedEmail) ||
+            string.IsNullOrWhiteSpace(password))
         {
             errorMessage = "Please fill in all fields.";
             return;
         }
 
-        // 2. SECURITY VALIDATION: Ensure the password meets all criteria
+        if (normalizedEmail.Any(char.IsWhiteSpace) ||
+            !new EmailAddressAttribute().IsValid(normalizedEmail))
+        {
+            errorMessage = "Please enter a valid email address without spaces.";
+            return;
+        }
+
         if (!hasMinLength || !hasUpperCase || !hasNumber || !hasSpecialChar)
         {
             errorMessage = "Your password does not meet the security requirements.";
@@ -124,46 +128,44 @@
         }
 
         isProcessing = true;
-        errorMessage = "";
 
-        try 
+        try
         {
-            // 3. DUPLICATE CHECK: Verify if the email already exists
-            var userExists = await DbContext.Users.AnyAsync(u => u.Email == email);
+            var userExists = await DbContext.Users
+                .AnyAsync(u => u.Email.Trim().ToLower() == normalizedEmail);
+                    
             if (userExists)
             {
                 errorMessage = "This email is already registered.";
-                isProcessing = false;
                 return;
             }
 
-            // 4. DATA MODELING: Create a new User entity
             var newUser = new User
             {
-                Name = name,
-                Email = email,
-                Password = password, // Note: In production, passwords should always be hashed
+                Name = fullName,
+                Email = normalizedEmail,
                 Role = "Customer",
                 CreatedAt = DateTime.Now
             };
 
-            // 5. PERSISTENCE: Save record to SQLite
+            var passwordHasher = new PasswordHasher<User>();
+            newUser.Password = passwordHasher.HashPassword(newUser, password);
+
             DbContext.Users.Add(newUser);
             await DbContext.SaveChangesAsync();
-
-            // 6. AUTO-LOGIN: Authenticate immediately after sign-up
-            await AuthService.Login(email, password);
-            
-            // 7. NAVIGATION: Redirect to storefront
-            NavManager.NavigateTo("/");
         }
         catch (Exception ex)
         {
-            errorMessage = "Error saving to database: " + ex.Message;
+            Console.Error.WriteLine(ex);
+            errorMessage = "We couldn't create your account. Please try again.";
+            return;
         }
         finally
         {
             isProcessing = false;
         }
+
+        var loggedIn = await AuthService.Login(normalizedEmail, password);
+        NavManager.NavigateTo(loggedIn ? "/" : "/login");
     }
 }
