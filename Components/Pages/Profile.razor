@@ -1,8 +1,9 @@
 @page "/profile"
 @using PetShopApp.Models
 @using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
 @inject PetShopApp.Services.AuthService AuthService
-@inject PetShopApp.Data.ApplicationDbContext DbContext
+@inject IDbContextFactory<PetShopApp.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavManager
 
 @* --- INTERACTIVE ACCOUNT PROFILE PAGE ---
@@ -10,7 +11,7 @@
     Changes are persisted to the database via ProductService.
 *@
 
-<PageTitle>My Profile - text page or app name</PageTitle>
+<PageTitle>My Profile - Pet Love Care</PageTitle>
 
 @if (AuthService.CurrentUser == null)
 {
@@ -33,30 +34,38 @@ else
                         <h3 class="fw-bold mt-2 text-uppercase" style="letter-spacing: 2px;">My Account</h3>
                     </div>
 
-                    <EditForm Model="AuthService.CurrentUser" OnValidSubmit="HandleUpdate">
+                    <EditForm Model="@profileModel" OnValidSubmit="HandleUpdate">
                         <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small" />
 
                         <div class="mb-3">
                             <label class="fw-bold text-secondary text-uppercase x-small">Full Name</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Name"
+                            <InputText @bind-Value="@profileModel.Name"
                                        class="form-control form-control-sm rounded-0 border-dark" />
                         </div>
 
                         <div class="mb-3">
-                            <label class="fw-bold text-secondary text-uppercase x-small">Email (Read-only)</label>
-                            <input type="text" value="@AuthService.CurrentUser.Email"
-                                   class="form-control form-control-sm rounded-0 bg-light" disabled />
+                            <label for="profile-email"
+                                class="fw-bold text-secondary text-uppercase x-small">
+                                Email (Read-only)
+                            </label>
+
+                            <input id="profile-email"
+                                type="email"
+                                value="@AuthService.CurrentUser?.Email"
+                                class="form-control form-control-sm rounded-0 bg-light"
+                                readonly />
                         </div>
 
                         <div class="mb-3">
                             <label class="fw-bold text-secondary text-uppercase x-small">Phone</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Phone"
+                            <InputText @bind-Value="@profileModel.Phone"
                                        class="form-control form-control-sm rounded-0 border-dark" placeholder="Enter phone" />
                         </div>
 
                         <div class="mb-3">
                             <label class="fw-bold text-secondary text-uppercase x-small">Shipping Address</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Address"
+                            <InputText @bind-Value="@profileModel.Address"
                                        class="form-control form-control-sm rounded-0 border-dark"
                                        placeholder="Street name and number" />
                         </div>
@@ -64,34 +73,43 @@ else
                         <div class="row mb-3">
                             <div class="col-6">
                                 <label class="fw-bold text-secondary text-uppercase x-small">City</label>
-                                <InputText @bind-Value="AuthService.CurrentUser.City"
+                                <InputText @bind-Value="@profileModel.City"
                                            class="form-control form-control-sm rounded-0 border-dark" />
                             </div>
                             <div class="col-6">
                                 <label class="fw-bold text-secondary text-uppercase x-small">Zip Code</label>
-                                <InputText @bind-Value="AuthService.CurrentUser.ZipCode"
+                                <InputText @bind-Value="@profileModel.ZipCode"
                                            class="form-control form-control-sm rounded-0 border-dark" />
                             </div>
                         </div>
 
                         <div class="mb-4">
                             <label class="fw-bold text-secondary text-uppercase x-small">Country</label>
-                            <InputText @bind-Value="AuthService.CurrentUser.Country"
+                            <InputText @bind-Value="profileModel.Country"
                                        class="form-control form-control-sm rounded-0 border-dark" />
                         </div>
-
-                        <button type="submit" class="btn btn-dark btn-sm w-100 rounded-0 fw-bold mb-2 py-2">
+                        <button type="submit"
+                            class="btn btn-dark btn-sm w-100 rounded-0 fw-bold mb-2 py-2"
+                            disabled="@isSaving">
                             @(isSaving ? "SAVING..." : "UPDATE PROFILE")
                         </button>
                     </EditForm>
 
-                    <button class="btn btn-outline-danger btn-sm w-100 rounded-0 fw-bold py-2"
-                            type="button" @onclick="Logout">LOGOUT</button>
+                    
+                    <button type="button"
+                            class="btn btn-outline-danger btn-sm w-100 rounded-0 fw-bold py-2"
+                            @onclick="Logout">
+                        LOGOUT
+                    </button>        
                     
                     @if (!string.IsNullOrEmpty(statusMessage))
                     {
-                        <div class="alert alert-success mt-3 rounded-0 small p-2 text-center">@statusMessage</div>
+                            <div role="status"
+                                class="alert @(saveFailed ? "alert-danger" : "alert-success") mt-3 rounded-0 small p-2 text-center">
+                                @statusMessage
+                            </div>
                     }
+                    
                 </div>
             </div>
 
@@ -117,43 +135,96 @@ else
 </style>
 
 @code {
-    private bool isSaving = false;
+    private ProfileForm profileModel = new();
+    private bool isSaving;
+    private bool saveFailed;
     private string statusMessage = "";
 
-    /// <summary>
-    /// Persists the updated user information to the SQLite database.
-    /// </summary>
+    protected override void OnInitialized()
+    {
+        if (AuthService.CurrentUser is not { } user)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
+
+        profileModel = new ProfileForm
+        {
+            Name = user.Name,
+            Phone = user.Phone ?? "",
+            Address = user.Address ?? "",
+            City = user.City ?? "",
+            ZipCode = user.ZipCode ?? "",
+            Country = user.Country ?? ""
+        };
+    }
+
     private async Task HandleUpdate()
     {
-        isSaving = true;
+        
+        if (isSaving)
+            return;
+
+        if (AuthService.CurrentUser is not { } currentUser)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
+
         statusMessage = "";
+        saveFailed = false;
+
+        if (string.IsNullOrWhiteSpace(profileModel.Name))
+        {
+            saveFailed = true;
+            statusMessage = "Please enter your full name.";
+            return;
+        }
+
+        isSaving = true;
 
         try
         {
-            if (AuthService.CurrentUser != null)
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            // The account comes from the current session, not a form field.
+            var user = await db.Users
+                .SingleOrDefaultAsync(u => u.Id == currentUser.Id);
+
+            if (user is null)
             {
-                // 1. Verificamos se já existe uma instância do mesmo utilizador sendo rastreada
-                var trackedUser = DbContext.Users.Local.FirstOrDefault(u => u.Id == AuthService.CurrentUser.Id);
-            
-                if (trackedUser != null)
-                {
-                    // Se existir, "desvinculamos" a instância antiga da memória temporária (Detach)
-                    DbContext.Entry(trackedUser).State = EntityState.Detached;
-                }
-
-                // 2. Agora anexamos a versão atualizada do AuthService.CurrentUser
-                DbContext.Users.Update(AuthService.CurrentUser);
-            
-                // 3. Persistimos no SQLite
-                await DbContext.SaveChangesAsync();
-
-                statusMessage = "Profile updated successfully!";
+                AuthService.Logout();
+                NavManager.NavigateTo("/login");
+                return;
             }
+
+            user.Name = profileModel.Name.Trim();
+            user.Phone = profileModel.Phone.Trim();
+            user.Address = profileModel.Address.Trim();
+            user.City = profileModel.City.Trim();
+            user.ZipCode = profileModel.ZipCode.Trim();
+            user.Country = profileModel.Country.Trim();
+
+            await db.SaveChangesAsync();
+
+            // Refresh the session only after a successful save.
+            if (ReferenceEquals(AuthService.CurrentUser, currentUser))
+            {
+                currentUser.Name = user.Name;
+                currentUser.Phone = user.Phone;
+                currentUser.Address = user.Address;
+                currentUser.City = user.City;
+                currentUser.ZipCode = user.ZipCode;
+                currentUser.Country = user.Country;
+            }
+
+            statusMessage = "Profile updated successfully!";
         }
         catch (Exception ex)
         {
-            statusMessage = "Database Error: " + ex.Message;
-            // Opcional: Console.WriteLine(ex.ToString()); para debugar
+            Console.Error.WriteLine(ex);
+            saveFailed = true;
+            statusMessage = "We couldn't save your profile. Please try again.";
         }
         finally
         {
@@ -167,11 +238,25 @@ else
         NavManager.NavigateTo("/login");
     }
 
-    protected override void OnInitialized()
+    public sealed class ProfileForm
     {
-        if (!AuthService.IsLoggedIn)
-        {
-            NavManager.NavigateTo("/login");
-        }
+        [Required(ErrorMessage = "Please enter your full name.")]
+        [StringLength(100)]
+        public string Name { get; set; } = "";
+
+        [StringLength(30)]
+        public string Phone { get; set; } = "";
+
+        [StringLength(200)]
+        public string Address { get; set; } = "";
+
+        [StringLength(100)]
+        public string City { get; set; } = "";
+
+        [StringLength(20)]
+        public string ZipCode { get; set; } = "";
+
+        [StringLength(100)]
+        public string Country { get; set; } = "";
     }
 }
