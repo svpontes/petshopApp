@@ -210,22 +210,22 @@
 
     protected override void OnInitialized()
     {
-    if (AuthService.CurrentUser != null)
-    {
-        var user = AuthService.CurrentUser;
-        
-        // Split name for the form fields
-        var names = user.Name.Split(' ');
-        checkoutModel.FirstName = names.Length > 0 ? names[0] : "";
-        checkoutModel.LastName = names.Length > 1 ? string.Join(" ", names.Skip(1)) : "";
-        
-        // Mapeamento direto dos dados que o cliente preencheu no Profile
-        checkoutModel.Email = user.Email;
-        checkoutModel.Phone = user.Phone ?? "";
-        checkoutModel.Address = user.Address ?? "";
-        checkoutModel.City = user.City ?? "";
-        checkoutModel.PostalCode = user.ZipCode ?? "";
-        checkoutModel.Country = user.Country ?? "";
+        if (AuthService.CurrentUser != null)
+        {
+            var user = AuthService.CurrentUser;
+
+            // Split name for the form fields
+            var names = user.Name.Split(' ');
+            checkoutModel.FirstName = names.Length > 0 ? names[0] : "";
+            checkoutModel.LastName = names.Length > 1 ? string.Join(" ", names.Skip(1)) : "";
+
+            // Mapeamento direto dos dados que o cliente preencheu no Profile
+            checkoutModel.Email = user.Email;
+            checkoutModel.Phone = user.Phone ?? "";
+            checkoutModel.Address = user.Address ?? "";
+            checkoutModel.City = user.City ?? "";
+            checkoutModel.PostalCode = user.ZipCode ?? "";
+            checkoutModel.Country = user.Country ?? "";
         }
     }
 
@@ -235,6 +235,17 @@
     /// </summary>
     private async Task HandleCheckout()
     {
+        if(isProcessing)
+            return;
+        var customer = AuthService.CurrentUser;
+
+        if(customer is null)
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
+        if (!CartService.CartItems.Any())
+            return;
         isProcessing = true;
 
         try 
@@ -274,6 +285,7 @@
             // 3. ASSEMBLY: Create the comprehensive Order object
             var newOrder = new Order
             {
+                UserId = customer.Id,
                 CustomerName = $"{checkoutModel.FirstName} {checkoutModel.LastName}",
                 CustomerEmail = checkoutModel.Email,
                 ShippingAddress = $"{checkoutModel.Address}, {checkoutModel.City}, {checkoutModel.Country} - {checkoutModel.PostalCode}",
@@ -288,10 +300,10 @@
             await DbContext.SaveChangesAsync();
 
             // 5. SESSION UPDATE: Update order history in memory
-            if (AuthService.CurrentUser != null)
-            {
-                AuthService.CurrentUser.OrderHistory.Add(newOrder);
-            }
+            if (ReferenceEquals(AuthService.CurrentUser, customer))
+                {
+                    customer.OrderHistory.Add(newOrder);
+                }
 
             // 6. FINALIZATION: Clear cart and show success view
             CartService.ClearCart();
