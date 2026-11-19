@@ -1,0 +1,98 @@
+.signIn-container {
+  font-family: var(--body-font-family);
+
+  .signIn-banner {
+    display: none;
+  }
+
+  .signIn-content {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 80px;
+
+    .signIn-content-container {
+      width: 80%;
+      max-width: 350px;
+      display: flex;
+      flex-direction: column;
+      gap: 100px;
+
+      .signIn-content-logo {
+        width: 200px;
+      }
+
+      .signIn-content-formContainer {
+        div {
+          div {
+            h1 {
+              color: var(--title-color);
+              font-weight: var(--f-bold);
+
+              @media (min-width: 1200px) {
+                font-size: 32px;
+              }
+            }
+
+            div {
+              p {
+                color: var(--paragraph-color);
+                margin-bottom: 1.5rem;
+
+                a {
+                  color: var(--title-color);
+                  font-weight: var(--f-bold);
+
+                  &:hover {
+                    cursor: pointer;
+                    color: var(--primary-color);
+                  }
+                }
+              }
+            }
+
+            form {
+              div {
+                label {
+                  color: var(--paragraph-color);
+                }
+
+                input {
+                  background-color: var(--container-color);
+                  border-color: #b9b9b9;
+                  border-radius: 10px;
+                  color: var(--title-color);
+                }
+
+                a {
+                  color: var(--paragraph-color);
+
+                  &:hover {
+                    cursor: pointer;
+                    color: var(--primary-color);
+                  }
+                }
+              }
+
+              button {
+                margin-top: 10px;
+                background-color: var(--btn-color);
+                color: var(--bg-color);
+                font-weight: var(--f-medium);
+                border-radius: 10px;
+                padding: 10px 0;
+                border: none;
+
+                &:hover {
+                  cursor: pointer;
+                  background-color: #424649;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
