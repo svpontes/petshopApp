@@ -1,8 +1,70 @@
 .signIn-container {
   font-family: var(--body-font-family);
+  height: 100vh;
+
+  @media (min-width: 1200px) {
+    display: flex;
+    flex-direction: row;
+  }
 
   .signIn-banner {
     display: none;
+    background-color: var(--primary-color);
+    width: 60%;
+
+    @media (min-width: 1200px) {
+      display: flex;
+      justify-content: center;
+    }
+
+    .signIn-banner-container {
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding-bottom: 20px;
+      position: relative;
+
+      .signIn-banner-content {
+        color: var(--bg-color);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 20px;
+        margin-top: -120px;
+
+        .signIn-banner-logo {
+          width: 180px;
+        }
+
+        h2 {
+          font-weight: var(--f-bold);
+          font-size: 65px;
+        }
+      }
+
+      footer {
+        position: absolute;
+        bottom: 0;
+
+        p {
+          color: var(--bg-color);
+          margin-bottom: 40px;
+
+          a {
+            color: var(--bg-color);
+            text-decoration-line: none;
+            font-weight: var(--f-semibold);
+
+            &:hover {
+              cursor: pointer;
+              text-decoration-line: underline;
+            }
+          }
+        }
+      }
+    }
   }
 
   .signIn-content {
@@ -12,12 +74,23 @@
     align-items: center;
     padding-top: 80px;
 
+    @media (min-width: 1200px) {
+      padding-top: 0;
+      width: 40%;
+      justify-content: flex-start;
+      padding-left: 80px;
+    }
+
     .signIn-content-container {
       width: 80%;
       max-width: 350px;
       display: flex;
       flex-direction: column;
       gap: 100px;
+
+      @media (min-width: 1200px) {
+        gap: 60px;
+      }
 
       .signIn-content-logo {
         width: 200px;
