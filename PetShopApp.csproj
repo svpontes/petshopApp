@@ -15,5 +15,12 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Remove="PetShopApp.Tests/**/*.cs" />
+    <Content Remove="PetShopApp.Tests/**/*" />
+    <EmbeddedResource Remove="PetShopApp.Tests/**/*" />
+    <None Remove="PetShopApp.Tests/**/*" />
+  </ItemGroup>
 
-</Project>
+</Project>  
