@@ -476,3 +476,27 @@ h1:focus {
     text-decoration-color: #c1121f;
     text-decoration-thickness: 2px;
 }
+
+.order-history-product-image,
+.order-history-image-placeholder {
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.order-history-product-image {
+    display: block;
+    object-fit: contain;
+    padding: 4px;
+}
+
+.order-history-image-placeholder {
+    display: grid;
+    place-items: center;
+    color: #6c757d;
+    background-color: #f8f9fa;
+    font-size: 1.5rem;
+}

@@ -2,6 +2,7 @@
 @using PetShopApp.Models
 @using Microsoft.EntityFrameworkCore
 @using System.ComponentModel.DataAnnotations
+@using PetShopApp.Components.Shared
 @inject PetShopApp.Services.AuthService AuthService
 @inject IDbContextFactory<PetShopApp.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavManager
@@ -115,12 +116,17 @@ else
 
             @* --- RIGHT COLUMN: ORDER HISTORY --- *@
             <div class="col-md-8">
-                <h2 class="fw-bold mb-4 text-uppercase" style="letter-spacing: 2px;">Order History</h2>
-                @* ... (Mantenha aqui o código do histórico de pedidos que enviamos antes) ... *@
+                <CustomerOrderHistory />
+
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="/catalog" class="btn btn-outline-dark rounded-0 px-4 py-2 fw-bold">
+                        CONTINUE SHOPPING
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-}
+    }
 
 <style>
     .x-small {
