@@ -21,6 +21,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<OrderService>();
 
 var app = builder.Build();
 
