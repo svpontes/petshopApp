@@ -7,7 +7,7 @@
 @inject PetShopApp.Services.AuthService AuthService
 @inject NavigationManager NavManager
 
-@layout NoHeaderFooterLayout
+@layout MainLayout
 
 @page "/register"
 
@@ -19,20 +19,20 @@
 
 <PageTitle>Register | Pet Love Care</PageTitle>
 
-<div class="row justify-content-center align-items-center min-vh-100" style="margin-top: -100px;">
-    <div class="col-md-5">
-        <div class="card border-0 shadow-lg p-4 bg-black text-white rounded-0">
-            <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">Text JOIN the Page</h2>
+<div class="container d-flex justify-content-center align-items-center py-5">
+    <div class="col-12 col-md-7 col-lg-5">
+        <div class="card border-0 shadow-lg p-4 text-white rounded-0">
+            <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">JOIN US</h2>
             
             @* User Input Fields with Two-Way Data Binding *@
             <div class="mb-3">
                 <label class="small fw-bold text-secondary">FULL NAME</label>
-                <input type="text" @bind="name" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" placeholder="Your Name" />
+                <input type="text" @bind="name" class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="Your Name" />
             </div>
 
             <div class="mb-3">
                 <label class="small fw-bold text-secondary">EMAIL</label>
-                <input type="email" @bind="email" class="form-control bg-transparent border-secondary text-white rounded-0 py-2" placeholder="email@example.com" />
+                <input type="email" @bind="email" class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="email@example.com" />
             </div>
 
             @* --- PASSWORD FIELD WITH REAL-TIME VALIDATION --- *@
@@ -41,23 +41,36 @@
                 <input type="password" 
                        @bind="password"
                        @oninput="CheckPasswordStrength" 
-                       class="form-control bg-transparent border-secondary text-white rounded-0 py-2" autocomplete="new-password" />
+                       class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" autocomplete="new-password" />
                 
                 @* Visual Security Checklist *@
-                <div class="mt-3 p-3 border border-secondary bg-black ">
-                    <h6 class="fw-bold text-uppercase text-white mb-2" style="font-size: 0.65rem; letter-spacing: 1px;">Security Checklist:</h6>
-                    <ul class="list-unstyled mb-0" style="font-size: 0.7rem;">
-                        <li class="@(hasMinLength ? "text-lime" : "text-white")">
-                            <i class="bi @(hasMinLength ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 8+ Characters
+                @* Mark completed password requirements without striking through the icons. *@
+                <div class="register-security-checklist mt-3 p-3">
+                    <h6 class="fw-bold text-uppercase mb-2">Security Checklist:</h6>
+
+                    <ul class="list-unstyled mb-0">
+                        <li class="@(hasMinLength ? "requirement-met" : "")">
+                            <i class="bi @(hasMinLength ? "bi-check-circle-fill" : "bi-circle") me-2"
+                            aria-hidden="true"></i>
+                            <span>8+ Characters</span>
                         </li>
-                        <li class="@(hasUpperCase ? "text-lime" : "text-white")">
-                            <i class="bi @(hasUpperCase ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 1 Uppercase Letter
+
+                        <li class="@(hasUpperCase ? "requirement-met" : "")">
+                            <i class="bi @(hasUpperCase ? "bi-check-circle-fill" : "bi-circle") me-2"
+                            aria-hidden="true"></i>
+                            <span>1 Uppercase Letter</span>
                         </li>
-                        <li class="@(hasNumber ? "text-lime" : "text-white")">
-                            <i class="bi @(hasNumber ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 1 Number
+
+                        <li class="@(hasNumber ? "requirement-met" : "")">
+                            <i class="bi @(hasNumber ? "bi-check-circle-fill" : "bi-circle") me-2"
+                            aria-hidden="true"></i>
+                            <span>1 Number</span>
                         </li>
-                        <li class="@(hasSpecialChar ? "text-lime" : "text-white")">
-                            <i class="bi @(hasSpecialChar ? "bi-check-circle-fill" : "bi-circle") me-2"></i> 1 Special Character
+
+                        <li class="@(hasSpecialChar ? "requirement-met" : "")">
+                            <i class="bi @(hasSpecialChar ? "bi-check-circle-fill" : "bi-circle") me-2"
+                            aria-hidden="true"></i>
+                            <span>1 Special Character</span>
                         </li>
                     </ul>
                 </div>

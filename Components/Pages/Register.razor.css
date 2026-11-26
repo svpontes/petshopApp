@@ -1,0 +1,22 @@
+/* Present password requirements inside a light panel. */
+.register-security-checklist {
+    background-color: var(--container-color, #f8f9fb);
+    color: var(--title-color, #363435);
+    border: 1px solid #b9b9b9;
+    border-radius: 10px;
+}
+
+.register-security-checklist h6 {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+}
+
+.register-security-checklist li {
+    font-size: 0.8rem;
+    line-height: 1.7;
+}
+
+/* Strike through completed requirement text while preserving the icon. */
+.register-security-checklist .requirement-met span {
+    text-decoration-line: line-through;
+}
