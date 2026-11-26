@@ -1,0 +1,97 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using PetShopApp.Services
+@implements IDisposable
+@inject AuthenticationStateProvider AuthenticationState
+@inject AuthService AuthService
+@inject CartSessionStore CartStore
+@inject CartService CartService
+@inject ILogger<AccountSessionGate> Logger
+
+@* Initialize the session before pages evaluate their account guards. *@
+@if (ready && string.IsNullOrEmpty(errorMessage))
+{
+    @ChildContent
+}
+else
+{
+    <div class="container py-5" role="status">
+        @if (string.IsNullOrEmpty(errorMessage))
+        {
+            <p>Loading your account...</p>
+        }
+        else
+        {
+            <p>@errorMessage</p>
+            <a href="/" data-enhance-nav="false">Reload the application</a>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private bool ready;
+    private bool disposed;
+    private string errorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationState.AuthenticationStateChanged += HandleAuthenticationChanged;
+        await AuthService.InitializeAsync((await AuthenticationState.GetAuthenticationStateAsync()).User);
+
+        // Browser storage is unavailable during prerendering.
+        ready = !RendererInfo.IsInteractive;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !RendererInfo.IsInteractive)
+            return;
+
+        try
+        {
+            await CartStore.RestoreAsync();
+            CartService.OnChange += HandleCartChanged;
+            ready = true;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Could not restore browser cart state.");
+            errorMessage = "We couldn't restore your shopping session. Please reload the page.";
+        }
+        StateHasChanged();
+    }
+
+    private void HandleCartChanged() => _ = InvokeAsync(SaveCartAsync);
+
+    private async Task SaveCartAsync()
+    {
+        try
+        {
+            await CartStore.SaveAsync();
+        }
+        catch (Exception exception)
+        {
+            if (!disposed)
+                Logger.LogWarning(exception, "Could not save browser cart state.");
+        }
+    }
+
+    private void HandleAuthenticationChanged(Task<AuthenticationState> stateTask)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            ready = false;
+            StateHasChanged();
+            await AuthService.InitializeAsync((await stateTask).User);
+            ready = true;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        AuthenticationState.AuthenticationStateChanged -= HandleAuthenticationChanged;
+        CartService.OnChange -= HandleCartChanged;
+    }
+}

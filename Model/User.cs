@@ -1,53 +1,48 @@
-namespace PetShopApp.Models
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.AspNetCore.Identity;
+
+namespace PetShopApp.Models;
+
+/// <summary>
+/// Extends Identity while retaining the existing integer account IDs and profile data.
+/// </summary>
+public class User : IdentityUser<int>
 {
-    /// <summary>
-    /// Represents a user entity within the application, handling both 
-    /// authentication data and personal profile information.
-    /// </summary>
-    public class User
+    public string Name { get; set; } = string.Empty;
+    public string? AvatarUrl { get; set; }
+
+    // Retain the legacy role field during migration; Identity role memberships will be authoritative.
+    public string Role { get; set; } = "Customer";
+
+    // Keep existing callers compatible with Identity's nullable email declaration.
+    [AllowNull]
+    public override string Email
     {
-        // Primary Key for the Users table
-        public int Id { get; set; }
-
-        // Full name of the user
-        public string Name { get; set; } = string.Empty;
-
-        // Unique identifier for login purposes
-        public string Email { get; set; } = string.Empty;
-
-        // User password (stored as plain text for this implementation, 
-        // though hashing is recommended for production)
-        public string Password { get; set; } = string.Empty; 
-
-        // Optional URL for the user's profile picture
-        public string? AvatarUrl { get; set; }
-     
-        // Authorization role (e.g., "Customer" or "Admin") to manage permissions
-        public string Role { get; set; } = "Customer"; 
-
-        // --- EXTENDED PROFILE INFORMATION ---
-        // These nullable properties allow for optional data entry during registration or checkout
-        
-        public string? Phone { get; set; }
-        public string? Address { get; set; }
-        public string? City { get; set; }
-        
-        // ZipCode property mapped to match checkout and database requirements
-        public string? ZipCode { get; set; }
-        
-        public string? Country { get; set; }
-
-        // --- RELATIONSHIPS ---
-
-        /// <summary>
-        /// Navigation property representing the collection of orders placed by the user.
-        /// This establishes a One-to-Many relationship between User and Orders.
-        /// </summary>
-        public List<Order> OrderHistory { get; set; } = new List<Order>();
-        
-        // --- AUDIT METADATA ---
-
-        // Automatically captures the timestamp when the user account is created
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        get => base.Email ?? string.Empty;
+        set => base.Email = value;
     }
+
+    // Preserve the legacy API while Identity owns the mapped password hash.
+    [NotMapped]
+    public string Password
+    {
+        get => PasswordHash ?? string.Empty;
+        set => PasswordHash = value;
+    }
+
+    // Preserve the legacy profile API while Identity owns the mapped phone number.
+    [NotMapped]
+    public string? Phone
+    {
+        get => PhoneNumber;
+        set => PhoneNumber = value;
+    }
+
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public string? ZipCode { get; set; }
+    public string? Country { get; set; }
+    public List<Order> OrderHistory { get; set; } = new();
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }

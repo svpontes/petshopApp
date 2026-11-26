@@ -4,6 +4,7 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using PetShopApp.Data
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject AuthService AuthService
 @inject ApplicationDbContext DbContext
 @inject NavigationManager NavManager

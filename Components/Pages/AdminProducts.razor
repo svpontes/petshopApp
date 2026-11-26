@@ -6,6 +6,7 @@
 @inject NavigationManager NavManager
 @inject AuthService AuthService
 @rendermode InteractiveServer
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @using PetShopApp.Data
 
 @* --- ADMIN PRODUCT MANAGEMENT ---
