@@ -1,0 +1,6 @@
+@inject NavigationManager Navigation
+
+@code {
+    // Redirect only after authorization identifies an anonymous visitor.
+    protected override void OnInitialized() => Navigation.NavigateTo("/login");
+}

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PetShopApp.Models;
 
@@ -7,7 +9,7 @@ namespace PetShopApp.Data
     /// The primary database context class that coordinates Entity Framework functionality 
     /// for the application's data models.
     /// </summary>
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
         /// <summary>
         /// Initializes a new instance of the context using the specified options 
@@ -26,7 +28,7 @@ namespace PetShopApp.Data
         public DbSet<Order> Orders { get; set; }
 
         // Manages user accounts, credentials, and profile information
-        public DbSet<User> Users { get; set; }
+        // Users is inherited from IdentityDbContext.
 
         // Stores email addresses for the newsletter mailing list
         public DbSet<NewsletterSubscriber> Subscribers { get; set; }
@@ -43,6 +45,18 @@ namespace PetShopApp.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Preserve the existing account table and credential columns.
+            modelBuilder.Entity<User>().ToTable("Users");
+            modelBuilder.Entity<User>().Property(user => user.Email).IsRequired();
+            modelBuilder.Entity<User>().Property(user => user.PasswordHash)
+                .HasColumnName("Password").IsRequired();
+            modelBuilder.Entity<User>().Property(user => user.PhoneNumber)
+                .HasColumnName("Phone");
+
+            // Enforce case-normalized email uniqueness for Identity accounts.
+            modelBuilder.Entity<User>().HasIndex(user => user.NormalizedEmail)
+                .IsUnique();
             modelBuilder.Entity<User>()
             .HasIndex(user => user.Email)
             .IsUnique();

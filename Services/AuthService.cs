@@ -1,96 +1,69 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using PetShopApp.Data;
 using PetShopApp.Models;
-using Microsoft.AspNetCore.Identity;
 
-namespace PetShopApp.Services
+namespace PetShopApp.Services;
+
+/// <summary>
+/// Restores the account from Identity. HTTP endpoints own cookie sign-in and sign-out.
+/// </summary>
+public sealed class AuthService(
+    IDbContextFactory<ApplicationDbContext> dbFactory,
+    IOptions<IdentityOptions> identityOptions)
 {
+    public User? CurrentUser { get; private set; }
+    public bool IsLoggedIn => CurrentUser is not null;
+    public bool IsAdmin { get; private set; }
+    public event Action? OnChange;
+
     /// <summary>
-    /// Service responsible for handling user authentication, session state, and role authorization.
+    /// Loads the account before pages evaluate their existing session guards.
     /// </summary>
-    public class AuthService
+    public async Task InitializeAsync(ClaimsPrincipal principal)
     {
-        // Scope factory is used to create a temporary database context scope 
-        // within this service, ensuring thread safety in Blazor Server.
-        private readonly IServiceScopeFactory _scopeFactory;
-
-        // Holds the currently authenticated user's data. Null if no user is logged in.
-        public User? CurrentUser { get; set; }
-
-        // Event triggered whenever the authentication state changes (Login/Logout),
-        // allowing UI components to refresh automatically.
-        public event Action? OnChange;
-
-        // Helper property to check if a session is active.
-        public bool IsLoggedIn => CurrentUser != null;
-
-        // Helper property to check if the current user has administrative privileges.
-        public bool IsAdmin => CurrentUser?.Role == "Admin";
-
-        public AuthService(IServiceScopeFactory scopeFactory)
-        {
-            _scopeFactory = scopeFactory;
-        }
-
-        /// <summary>
-        /// Validates user credentials against the database and initializes the session.
-        /// </summary>
-        /// <param name="email">User's email address.</param>
-        /// <param name="password">User's plain-text password.</param>
-        /// <returns>True if authentication succeeds; otherwise, false.</returns>
-        public async Task<bool> Login(string email, string password)
-        {
-            // Create a temporary scope to resolve the ApplicationDbContext
-            using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var normalizedEmail = email.Trim().ToLowerInvariant();
-            // Retrieve the user from the database, including their OrderHistory 
-            // to ensure it is available on the Profile page.
-            var user = await context.Users
-                .Include(u => u.OrderHistory)
-                .FirstOrDefaultAsync(u => u.Email.Trim().ToLower() == normalizedEmail);
-
-            if (user is null)
-                return false;
-
-            var passwordHasher = new PasswordHasher<User>();
-            PasswordVerificationResult result;
-            try
-            {
-                result = passwordHasher.VerifyHashedPassword(user, user.Password, password);
-            }
-
-            catch
-            {
-                //legacy account: require a password reset instead of accepting plaintext.
-                return false;
-            }
-
-            if (result == PasswordVerificationResult.Failed)
-            return false;
-
-            // Update session state
-            CurrentUser = user;
-            NotifyStateChanged();
-            return true;
-        }
-
-        /// <summary>
-        /// Clears the current session and resets authentication state.
-        /// </summary>
-        public void Logout()
-        {
-            CurrentUser = null;
-            NotifyStateChanged();
-        }
-
-        /// <summary>
-        /// Invokes the OnChange event to notify subscribed components of a state update.
-        /// </summary>
-        private void NotifyStateChanged()
+        ClearSession(notify: false);
+        var claims = identityOptions.Value.ClaimsIdentity;
+        if (principal.Identity?.IsAuthenticated != true ||
+            !int.TryParse(principal.FindFirstValue(claims.UserIdClaimType), out var id))
         {
             OnChange?.Invoke();
+            return;
         }
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var user = await db.Users.AsNoTracking()
+            .Include(account => account.OrderHistory)
+            .SingleOrDefaultAsync(account => account.Id == id);
+
+        // Deleted accounts and changed security stamps cannot restore a session.
+        if (user is null || string.IsNullOrEmpty(user.SecurityStamp) ||
+            principal.FindFirstValue(claims.SecurityStampClaimType) != user.SecurityStamp)
+        {
+            OnChange?.Invoke();
+            return;
+        }
+
+        var roles = await (from membership in db.UserRoles
+                           join role in db.Roles on membership.RoleId equals role.Id
+                           where membership.UserId == id
+                           select role.Name).ToListAsync();
+
+        CurrentUser = user;
+        IsAdmin = principal.IsInRole("Admin") && roles.Contains("Admin");
+        OnChange?.Invoke();
+    }
+
+    /// <summary>
+    /// Clears circuit data; the logout endpoint separately removes the cookie.
+    /// </summary>
+    public void ClearSession(bool notify = true)
+    {
+        CurrentUser = null;
+        IsAdmin = false;
+        if (notify)
+            OnChange?.Invoke();
     }
 }

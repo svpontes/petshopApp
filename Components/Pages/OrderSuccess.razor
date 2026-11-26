@@ -3,7 +3,7 @@
 @using PetShopApp.Models
 @using PetShopApp.Data
 @using PetShopApp.Services
-
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject NavigationManager NavManager
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthService AuthService

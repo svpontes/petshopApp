@@ -1,27 +1,140 @@
+/* Reserve navigation space on larger screens. */
 .nav {
-  width: 230px;
+    width: 230px;
+}
 
-  ul {
+/* Align the bag and account icons along their top edge. */
+.header-nav-items {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
     list-style: none;
     margin: 0;
-    padding: 0 5px 0 0;
-    gap: 18px;
+    padding: 0;
+}
 
-    @media (min-width: 768px) {
-      gap: 22px;
+.cart-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 36px;
+    text-decoration: none;
+}
+
+/* Stack the greeting directly below the account icon. */
+.account-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--bg-color);
+    text-decoration: none;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.account-toggle .bi {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 36px;
+}
+
+.cart-link .bi,
+.account-toggle .bi {
+    color: var(--bg-color);
+    font-size: 30px;
+}
+
+/* Keep long names inside the available header space. */
+.account-greeting {
+    display: block;
+    max-width: 108px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.account-dropdown-menu {
+    min-width: 150px;
+}
+
+/* Make keyboard focus visible against the red header. */
+.account-toggle:focus-visible,
+.cart-link:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 4px;
+}
+
+/* Position the existing counter inside the shopping bag icon. */
+.cart-count {
+    position: absolute;
+    top: 57%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    line-height: 1;
+}
+
+/* Style the badge rendered by the child component. */
+.cart-count ::deep .badge {
+    background: transparent !important;
+    color: white;
+    margin: 0 !important;
+    padding: 0;
+    font-size: 10px;
+}
+
+/* Reduce navigation width and spacing on smaller screens. */
+@media (max-width: 767.98px) {
+    .nav {
+        width: auto;
     }
 
-    @media (min-width: 992px) {
-      gap: 24px;
+    .header-nav-items {
+        gap: 12px;
     }
 
-    li .bi {
-      color: var(--bg-color);
-      font-size: 20px;
-
-      @media (min-width: 768px) {
-        font-size: 24px;
-      }
+    .account-greeting {
+        max-width: 88px;
+        font-size: 10px;
     }
-  }
+}
+/* Leave enough space for the account greeting on narrow screens. */
+@media (max-width: 575.98px) {
+    .header-logo .heartLogo {
+        width: 44px;
+    }
+
+    .header-logo .lettersLogo {
+        width: 110px;
+    }
+}
+/* Reserve the greeting row even when the user is signed out. */
+.header-nav-items {
+    min-height: 56px;
+    align-items: flex-start;
+}
+
+/* Keep account icons in the same position in both session states. */
+.account-toggle {
+    width: 108px;
+    min-height: 56px;
+    justify-content: flex-start;
+}
+
+/* Match the greeting width reserved for smaller screens. */
+@media (max-width: 767.98px) {
+    .account-toggle {
+        width: 88px;
+    }
 }

@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using System.ComponentModel.DataAnnotations
 @using PetShopApp.Components.Shared
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @inject PetShopApp.Services.AuthService AuthService
 @inject IDbContextFactory<PetShopApp.Data.ApplicationDbContext> DbFactory
 @inject NavigationManager NavManager
@@ -97,13 +98,14 @@ else
                     </EditForm>
 
                     
-                    <button type="button"
-                            class="btn btn-outline-danger btn-sm w-100 rounded-0 fw-bold py-2"
-                            @onclick="Logout">
+                     @* Remove the authentication cookie through a protected HTTP POST. *@
+                    <AccountForm Action="/account/logout">
+                        <button type="submit"
+                            class="btn btn-outline-danger btn-sm w-100 rounded-0 fw-bold py-2">
                         LOGOUT
-                    </button>        
-                    
-                    @if (!string.IsNullOrEmpty(statusMessage))
+                        </button>
+                     </AccountForm>
+                     @if (!string.IsNullOrEmpty(statusMessage))
                     {
                             <div role="status"
                                 class="alert @(saveFailed ? "alert-danger" : "alert-success") mt-3 rounded-0 small p-2 text-center">
@@ -116,7 +118,7 @@ else
 
             @* --- RIGHT COLUMN: ORDER HISTORY --- *@
             <div class="col-md-8">
-                <CustomerOrderHistory />
+                <CustomerOrderHistory/>
 
                 <div class="d-flex justify-content-end mt-4">
                     <a href="/catalog" class="btn btn-outline-dark rounded-0 px-4 py-2 fw-bold">
@@ -199,7 +201,7 @@ else
 
             if (user is null)
             {
-                AuthService.Logout();
+                AuthService.ClearSession();
                 NavManager.NavigateTo("/login");
                 return;
             }
@@ -238,13 +240,7 @@ else
         }
     }
 
-    private void Logout()
-    {
-        AuthService.Logout();
-        NavManager.NavigateTo("/login");
-    }
-
-    public sealed class ProfileForm
+      public sealed class ProfileForm
     {
         [Required(ErrorMessage = "Please enter your full name.")]
         [StringLength(100)]

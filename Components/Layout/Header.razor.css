@@ -45,3 +45,14 @@
     }
   }
 }
+/* Reserve consistent header space before and after login. */
+.header .header-container {
+    min-height: 96px;
+}
+
+/* Keep the header slightly more compact on smaller screens. */
+@media (max-width: 767.98px) {
+    .header .header-container {
+        min-height: 84px;
+    }
+}

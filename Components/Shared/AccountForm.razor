@@ -1,0 +1,56 @@
+@inject PetShopApp.Services.CartSessionStore CartStore
+@inject IJSRuntime JS
+@inject ILogger<AccountForm> Logger
+@* Write cookies through a normal HTTP request, outside the Blazor circuit. *@
+<form method="post" action="@Action" @ref="form"
+      data-enhance="false" @onsubmit="SubmitAsync" @onsubmit:preventDefault>
+    <AntiforgeryToken />
+    @ChildContent
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p class="text-danger mt-2" role="alert">@errorMessage</p>
+    }
+</form>
+
+@code {
+    [Parameter, EditorRequired] public string Action { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    private ElementReference form;
+    private bool submitting;
+    private string errorMessage = "";
+
+    private async Task SubmitAsync()
+    {
+        if (submitting)
+            return;
+
+        submitting = true;
+        errorMessage = "";
+        try
+        {
+            // Clear account selections on logout and preserve guest selections on login.
+            if (Action == "/account/logout")
+                await CartStore.ClearAsync();
+            else
+                await CartStore.SaveAsync();
+            await using var module = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./js/accountForm.js");
+            await module.InvokeVoidAsync("submit", form);
+        }
+        catch (JSDisconnectedException)
+        {
+            submitting = false;
+        }
+        catch (Exception exception)
+        {
+            // Record technical details without logging submitted credentials.
+             Logger.LogError(
+                exception,
+                 "Account form submission failed. Endpoint: {Endpoint}",
+                Action);
+
+            errorMessage = "We couldn't submit the form. Please try again.";
+            submitting = false;
+        }
+    }
+}

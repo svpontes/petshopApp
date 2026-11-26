@@ -1,139 +1,108 @@
+@using PetShopApp.Components.Shared
 @page "/login"
+@layout LoginLayout
 @inject PetShopApp.Services.AuthService AuthService
 @inject NavigationManager NavManager
-@layout NoHeaderFooterLayout
-
-@* --- LOGIN PAGE ---
-   Purpose: Provides an interface for user authentication.
-   It interacts with the AuthService to validate credentials and handles 
-   role-based navigation upon a successful session start.
-*@
 
 <PageTitle>Login | Pet Love Care</PageTitle>
 
-<div class="signIn-container">
-    <div class="signIn-banner">
-        <div class="signIn-banner-container">
-            <section class="signIn-banner-content">
-                <a href="/" title="Home">
-                    <img class="signIn-banner-logo" src="/images/pet-love-care-logo.png" alt="A woman and cat inside a white heart as the logo app">
-                </a>
-                <h2>Hello, Pet Lover!</h2>
-                <p>The best products for your beloved pet. High-quality, certified products. 100% guarantee!</p>
-            </section>
-            <footer>
-                <p class="small">© 2026 Designed and develop by 
-                    <a href="https://github.com/chrisperaza" target="_blank" rel="noopener noreferrer">chrisperaza</a>, 
-                    <a href="https://github.com/RebeccaSond" target="_blank" rel="noopener noreferrer">RebeccaSond</a>, 
-                    <a href="https://github.com/STU6266" target="_blank" rel="noopener noreferrer">STU6266</a>, and 
-                    <a href="https://github.com/svpontes" target="_blank" rel="noopener noreferrer">svpontes</a>
-                </p>
-            </footer>
-        </div>
-    </div>
+<section class="login-page">
+    <div class="login-grid">
 
-    <div class="signIn-content">
-        <div class="signIn-content-container">
-            <a href="/" title="Home">
-                <img class="signIn-content-logo" src="/images/pet-love-care-logo-letters-red.webp" alt="Pet Love Care logo in red.">
+        @* Present the brand alongside the login form. *@
+        <section class="login-intro" aria-labelledby="login-welcome">
+            <a href="/" aria-label="Pet Love Care homepage">
+                <img src="/images/pet-love-care-logo.png"
+                     class="login-intro-logo"
+                     alt="Pet Love Care" />
             </a>
 
-            <div class="signIn-content-formContainer">
-                <div>
-                    <div class="card border-0 rounded-0">
-                        <h1 class="mb-2">Login</h1>
+            <h2 id="login-welcome">Hello, Pet Lover!</h2>
 
-                        <div>
-                            <p class="small">
-                                Don't have an account? <a href="/register">Register now</a>
-                            </p>
-                        </div>
+            <p>
+                The best products for your beloved pet.
+                High-quality, certified products. 100% guarantee!
+            </p>
+        </section>
 
-                        <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
-                            <div class="mb-3">
-                                <label for="login-email" class="small fw-bold">Email</label>
-                                <input id="login-email" type="email" @bind="email"
-                                    autocomplete="username"
-                                    class="form-control py-2" />
-                            </div>
+        @* Keep the authentication form inside a white card. *@
+        <section class="login-card" aria-labelledby="login-heading">
+            <a href="/"
+               class="login-card-brand"
+               aria-label="Pet Love Care homepage">
+                <img src="/images/pet-love-care-logo-letters-red.webp"
+                     alt="Pet Love Care" />
+            </a>
 
-                            <div class="mb-4">
-                                <label for="login-password" class="small fw-bold">Password</label>
-                                <input id="login-password" type="password" @bind="password"
-                                    autocomplete="current-password"
-                                    class="form-control py-2" />
-                                <a href="/forgot-password" class="d-block text-end mt-1 small">
-                                    Forgot password?
-                                </a>
-                            </div>
+            <h1 id="login-heading">Login</h1>
 
-                            @if (!string.IsNullOrEmpty(errorMessage))
-                            {
-                                <div role="alert" class="alert alert-danger bg-transparent border-danger text-danger rounded-0 small py-2 mb-3">
-                                    <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
-                                    @errorMessage
-                                </div>
-                            }
+            <p class="login-register">
+                Don't have an account?
+                <a href="/register">Register now</a>
+            </p>
 
-                            <button type="submit"
-                                    class="w-100 small mb-3"
-                                    disabled="@isSigningIn">
-                                @(isSigningIn ? "Signing in..." : "Sign in")
-                            </button>
-                        </form
-                    </div>
+            <AccountForm Action="/account/login">
+                <div class="login-field">
+                    <label for="login-email">Email</label>
+
+                    <input id="login-email" name="email"
+                           class="login-input"
+                           type="email"
+                           autocomplete="username"
+                           @bind="email"
+                           @bind:event="oninput"
+                           required />
                 </div>
-            </div>
-        </div>
+
+                <div class="login-field login-field-password">
+                    <label for="login-password">Password</label>
+
+                    <input id="login-password" name="password"
+                           class="login-input"
+                           type="password"
+                           autocomplete="current-password"
+                           @bind="password"
+                           @bind:event="oninput"
+                           required />
+
+                    <a href="/forgot-password" class="login-forgot">
+                        Forgot password?
+                    </a>
+                </div>
+
+                @* Display authentication errors without leaving the form. *@
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="login-feedback" role="alert">
+                        @errorMessage
+                    </div>
+                }
+
+                <button type="submit"
+                        class="login-submit"
+>
+                    Sign in
+                </button>
+            </AccountForm>
+        </section>
     </div>
-</div>
+</section>
 
 @code {
-    // Local state variables for form inputs and feedback
     private string email = "";
     private string password = "";
-    private string errorMessage = "";
-    private bool isSigningIn;
 
-    /// <summary>
-    /// Processes the login request.
-    /// Communicates with the AuthService and redirects the user based on their specific Role.
-    /// </summary>
-    private async Task HandleLogin()
-    {
-        // Reset error message state before attempting new login
-        errorMessage = "";
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
 
-        // Call the asynchronous authentication service
-        bool success = await AuthService.Login(email, password);
-
-        if (success)
-        {
-            @* --- ROLE-BASED REDIRECTION ---
-               Admin users are directed to the management dashboard, 
-               while standard customers are sent to the storefront home.
-            *@
-            if (AuthService.CurrentUser?.Role == "Admin")
-            {
-                NavManager.NavigateTo("/admin");
-            }
-            else
-            {
-                NavManager.NavigateTo("/profile");
-            }
-        }
-        else
-        {
-            // Update UI state with failure message
-            errorMessage = "Invalid credentials.";
-        }
-    }
+    // Keep authentication failures generic, including temporary lockouts.
+    private string errorMessage => Error == "credentials"
+        ? "Unable to sign in. Check your credentials or try again later."
+        : "";
 
     protected override void OnInitialized()
     {
         if (AuthService.IsLoggedIn)
-        {
-            NavManager.NavigateTo("/profile");
-        }
+            NavManager.NavigateTo(AuthService.IsAdmin ? "/admin" : "/");
     }
 }
