@@ -1,6 +1,31 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-</Router>
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using PetShopApp.Components.Shared
+
+@* Restore the account before creating pages that depend on AuthService. *@
+<AccountSessionGate>
+    <Router AppAssembly="typeof(Program).Assembly"
+            NotFoundPage="typeof(Pages.NotFound)">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData"
+                                DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized Context="authenticationState">
+                    @if (authenticationState.User.Identity?.IsAuthenticated == true)
+                    {
+                        <div class="container py-5">
+                            <p role="alert">
+                                You don't have permission to view this page.
+                            </p>
+                            <a href="/" class="btn btn-dark">Back to home</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <RedirectToLogin />
+                    }
+                </NotAuthorized>
+            </AuthorizeRouteView>
+
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+    </Router>
+</AccountSessionGate>

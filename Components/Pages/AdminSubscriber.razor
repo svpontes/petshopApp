@@ -8,7 +8,7 @@
 @using PetShopApp.Services
 @inject AuthService Auth
 @inject NavigationManager NavManager
-
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @* --- ADMIN NEWSLETTER MANAGEMENT ---
    Purpose: Provides a secure dashboard for administrators to monitor 
    marketing leads and manage the mailing list database.

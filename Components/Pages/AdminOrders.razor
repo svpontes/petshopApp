@@ -7,7 +7,7 @@
 @inject AuthService Auth
 @inject NavigationManager NavManager
 @inject ApplicationDbContext DbContext
-
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @* --- ADMIN SALES LEDGER ---
    Purpose: Provides a comprehensive overview of all store transactions.
    Features: Detailed customer info, serialized item recovery, and role-based security.

@@ -4,6 +4,7 @@
 @using PetShopApp.Models
 @using System.Text.Json
 @using Microsoft.EntityFrameworkCore
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
 @inject CartService CartService
 @inject NavigationManager NavManager

@@ -1,9 +1,4 @@
-@using PetShopApp.Data
-@using PetShopApp.Models
-@using Microsoft.EntityFrameworkCore
-@using System.ComponentModel.DataAnnotations
-@using Microsoft.AspNetCore.Identity
-@inject ApplicationDbContext DbContext
+@using PetShopApp.Components.Shared
 @inject PetShopApp.Services.AuthService AuthService
 @inject NavigationManager NavManager
 
@@ -12,8 +7,8 @@
 @page "/register"
 
 @* --- REGISTRATION PAGE ---
-   Purpose: Allows new users to create an account, persists data to SQLite, 
-   and automatically authenticates the user upon successful creation.
+   Purpose: Allows new users to create an account, persists data to SQLite,
+   and uses an HTTP Identity endpoint for account creation and automatic sign-in.
    Security Update: Added real-time password strength validation.
 *@
 
@@ -21,28 +16,29 @@
 
 <div class="container d-flex justify-content-center align-items-center py-5">
     <div class="col-12 col-md-7 col-lg-5">
-        <div class="card border-0 shadow-lg p-4 text-white rounded-0">
+        <div class="card border-0 shadow-lg p-4 text-dark rounded-0">
             <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">JOIN US</h2>
-            
+
+            <AccountForm Action="/account/register">
             @* User Input Fields with Two-Way Data Binding *@
             <div class="mb-3">
                 <label class="small fw-bold text-secondary">FULL NAME</label>
-                <input type="text" @bind="name" class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="Your Name" />
+                <input id="register-name" name="name" type="text" @bind="name" maxlength="100" autocomplete="name" required class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="Your Name" />
             </div>
 
             <div class="mb-3">
                 <label class="small fw-bold text-secondary">EMAIL</label>
-                <input type="email" @bind="email" class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="email@example.com" />
+                <input id="register-email" name="email" type="email" @bind="email" autocomplete="email" required class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="email@example.com" />
             </div>
 
             @* --- PASSWORD FIELD WITH REAL-TIME VALIDATION --- *@
             <div class="mb-4">
                 <label class="small fw-bold text-secondary">PASSWORD</label>
-                <input type="password" 
+                <input id="register-password" name="password" type="password" required
                        @bind="password"
-                       @oninput="CheckPasswordStrength" 
+                       @oninput="CheckPasswordStrength"
                        class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" autocomplete="new-password" />
-                
+
                 @* Visual Security Checklist *@
                 @* Mark completed password requirements without striking through the icons. *@
                 <div class="register-security-checklist mt-3 p-3">
@@ -84,13 +80,14 @@
                 </div>
             }
 
-            <button class="btn btn-light w-100 fw-bold" @onclick="HandleRegister" disabled="@isProcessing">
-                @(isProcessing ? "CREATING ACCOUNT..." : "REGISTER")
+            <button type="submit" class="btn btn-dark w-100 fw-bold">
+                REGISTER
             </button>
 
             <div class="text-center mt-3">
                 <a href="/login" class="text-secondary small text-decoration-none hover-white">Already a member? Login here</a>
             </div>
+            </AccountForm>
         </div>
     </div>
 </div>
@@ -99,90 +96,34 @@
     private string name = "";
     private string email = "";
     private string password = "";
-    private string errorMessage = "";
-    private bool isProcessing;
 
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    // Display only predefined feedback; never render raw exception details.
+    private string errorMessage => Error switch
+    {
+        "name" => "Please enter your full name using no more than 100 characters.",
+        "email" => "Please enter a valid email address without spaces.",
+        "duplicate" => "This email is already registered.",
+        "password" => "Your password does not meet the security requirements.",
+        "unavailable" => "We couldn't create your account. Please try again.",
+        _ => ""
+    };
+
+    // Match the server-side Identity password validators.
     private bool hasMinLength => password.Length >= 8;
     private bool hasUpperCase => password.Any(char.IsUpper);
     private bool hasNumber => password.Any(char.IsDigit);
-    private bool hasSpecialChar =>
-        password.Any(ch => !char.IsLetterOrDigit(ch) && !char.IsWhiteSpace(ch));
+    private bool hasSpecialChar => password.Any(character =>
+        !char.IsLetterOrDigit(character) && !char.IsWhiteSpace(character));
 
-    private void CheckPasswordStrength(ChangeEventArgs e)
-    {
+    private void CheckPasswordStrength(ChangeEventArgs e) =>
         password = e.Value?.ToString() ?? "";
-    }
 
-    private async Task HandleRegister()
+    protected override void OnInitialized()
     {
-        if (isProcessing)
-            return;
-
-        errorMessage = "";
-
-        var fullName = name.Trim();
-        var normalizedEmail = email.Trim().ToLowerInvariant();
-
-        if (string.IsNullOrWhiteSpace(fullName) ||
-            string.IsNullOrWhiteSpace(normalizedEmail) ||
-            string.IsNullOrWhiteSpace(password))
-        {
-            errorMessage = "Please fill in all fields.";
-            return;
-        }
-
-        if (normalizedEmail.Any(char.IsWhiteSpace) ||
-            !new EmailAddressAttribute().IsValid(normalizedEmail))
-        {
-            errorMessage = "Please enter a valid email address without spaces.";
-            return;
-        }
-
-        if (!hasMinLength || !hasUpperCase || !hasNumber || !hasSpecialChar)
-        {
-            errorMessage = "Your password does not meet the security requirements.";
-            return;
-        }
-
-        isProcessing = true;
-
-        try
-        {
-            var userExists = await DbContext.Users
-                .AnyAsync(u => u.Email.Trim().ToLower() == normalizedEmail);
-                    
-            if (userExists)
-            {
-                errorMessage = "This email is already registered.";
-                return;
-            }
-
-            var newUser = new User
-            {
-                Name = fullName,
-                Email = normalizedEmail,
-                Role = "Customer",
-                CreatedAt = DateTime.Now
-            };
-
-            var passwordHasher = new PasswordHasher<User>();
-            newUser.Password = passwordHasher.HashPassword(newUser, password);
-
-            DbContext.Users.Add(newUser);
-            await DbContext.SaveChangesAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(ex);
-            errorMessage = "We couldn't create your account. Please try again.";
-            return;
-        }
-        finally
-        {
-            isProcessing = false;
-        }
-
-        var loggedIn = await AuthService.Login(normalizedEmail, password);
-        NavManager.NavigateTo(loggedIn ? "/" : "/login");
+        if (AuthService.IsLoggedIn)
+            NavManager.NavigateTo(AuthService.IsAdmin ? "/admin" : "/");
     }
 }

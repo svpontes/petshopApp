@@ -5,6 +5,7 @@
 @inject AuthService Auth
 @inject NavigationManager NavManager
 @inject ApplicationDbContext DbContext
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 
 @* --- ADMIN DASHBOARD ---
    Purpose: The central management hub for the BluntWear project.
