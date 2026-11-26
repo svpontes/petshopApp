@@ -1,3 +1,4 @@
+@using PetShopApp.Components.Shared
 @page "/login"
 @layout LoginLayout
 @inject PetShopApp.Services.AuthService AuthService
@@ -40,30 +41,28 @@
                 <a href="/register">Register now</a>
             </p>
 
-            <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
+            <AccountForm Action="/account/login">
                 <div class="login-field">
                     <label for="login-email">Email</label>
 
-                    <input id="login-email"
+                    <input id="login-email" name="email"
                            class="login-input"
                            type="email"
                            autocomplete="username"
                            @bind="email"
                            @bind:event="oninput"
-                           disabled="@isSigningIn"
                            required />
                 </div>
 
                 <div class="login-field login-field-password">
                     <label for="login-password">Password</label>
 
-                    <input id="login-password"
+                    <input id="login-password" name="password"
                            class="login-input"
                            type="password"
                            autocomplete="current-password"
                            @bind="password"
                            @bind:event="oninput"
-                           disabled="@isSigningIn"
                            required />
 
                     <a href="/forgot-password" class="login-forgot">
@@ -81,75 +80,29 @@
 
                 <button type="submit"
                         class="login-submit"
-                        disabled="@isSigningIn">
-                    @(isSigningIn ? "Signing in..." : "Sign in")
+>
+                    Sign in
                 </button>
-            </form>
+            </AccountForm>
         </section>
     </div>
 </section>
 
 @code {
-    // Store credentials, feedback and submission state.
     private string email = "";
     private string password = "";
-    private string errorMessage = "";
-    private bool isSigningIn;
 
-    /// <summary>
-    /// Authenticates the user and opens the appropriate landing page.
-    /// </summary>
-    private async Task HandleLogin()
-    {
-        // Prevent simultaneous login attempts.
-        if (isSigningIn)
-            return;
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
 
-        errorMessage = "";
+    // Keep authentication failures generic, including temporary lockouts.
+    private string errorMessage => Error == "credentials"
+        ? "Unable to sign in. Check your credentials or try again later."
+        : "";
 
-        // Validate the required credentials before contacting the service.
-        if (string.IsNullOrWhiteSpace(email) ||
-            string.IsNullOrWhiteSpace(password))
-        {
-            errorMessage = "Please enter your email and password.";
-            return;
-        }
-
-        isSigningIn = true;
-
-        try
-        {
-            var success = await AuthService.Login(email, password);
-
-            if (!success)
-            {
-                errorMessage = "Invalid credentials.";
-                return;
-            }
-
-            // Send customers to the homepage and admins to their dashboard.
-            NavManager.NavigateTo(AuthService.IsAdmin ? "/admin" : "/");
-        }
-        catch (Exception ex)
-        {
-            // Keep technical details in the application logs.
-            Console.Error.WriteLine($"Login failed: {ex}");
-            errorMessage = "We couldn't sign you in. Please try again.";
-        }
-        finally
-        {
-            isSigningIn = false;
-        }
-    }
-
-    /// <summary>
-    /// Redirects users who already have an authenticated session.
-    /// </summary>
     protected override void OnInitialized()
     {
         if (AuthService.IsLoggedIn)
-        {
             NavManager.NavigateTo(AuthService.IsAdmin ? "/admin" : "/");
-        }
     }
 }

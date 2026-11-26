@@ -6,7 +6,7 @@
 @inject AuthService Auth
 @inject NavigationManager NavManager
 @inject ApplicationDbContext DbContext
-
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @* --- ADMIN CONTACT LOGS ---
    Purpose: Provides a read-only historical record of all customer inquiries.
    This serves as a legal and operational log for customer support tracking.
