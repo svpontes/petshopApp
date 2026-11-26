@@ -1,67 +1,155 @@
-@page "/order-success"
+@page "/order-success/{OrderId:int}"
+@using Microsoft.EntityFrameworkCore
+@using PetShopApp.Models
+@using PetShopApp.Data
+@using PetShopApp.Services
+
 @inject NavigationManager NavManager
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthService AuthService
 
-<div class="container mt-5 pt-5 pb-5 text-center">
+<PageTitle>Order Confirmation | Pet Love Care</PageTitle>
+
+<div class="container mt-5 pt-5 pb-5">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="mb-4">
-                <i class="bi bi-check-circle-fill display-1 text-dark"></i>
-            </div>
+        <div class="col-md-8">
 
-            <h1 class="fw-bold text-uppercase mb-3" style="letter-spacing: 4px;">Order Confirmed</h1>
-            
-            <p class="text-secondary mb-5">
-                Your order has been placed successfully. <br />
-                We've sent a confirmation email with all the details and tracking information.
-            </p>
+            @if (isLoading)
+            {
+                <p role="status">Loading your order...</p>
+            }
+            else if (loadFailed)
+            {
+                <div class="alert alert-danger" role="alert">
+                    Your order could not be loaded. Please try again.
+                </div>
+            }
+            else if (order is null)
+            {
+                <h1 class="h3 fw-bold">Order not available</h1>
+                <p>
+                    Please sign in to view your order.
+                    The order must belong to your account.
+                </p>
+            }
+            else
+            {
+                <div class="text-center mb-4">
+                    <i class="bi bi-check-circle-fill display-1 text-success"></i>
+                    <h1 class="fw-bold mt-3">Order Confirmed</h1>
+                    <p>Your order has been placed successfully.</p>
+                </div>
 
-            <div class="card border-1 rounded-0 bg-light p-4 mb-5 text-start">
-                <h6 class="fw-bold text-uppercase mb-3">What's Next?</h6>
-                <ul class="list-unstyled mb-0 small text-secondary">
-                    <li class="mb-2"><i class="bi bi-envelope me-2"></i> Check your inbox for the receipt.</li>
-                    <li class="mb-2"><i class="bi bi-truck me-2"></i> We'll notify you when your drop ships.</li>
-                    <li><i class="bi bi-star me-2"></i> Tag us on social media for a chance to be featured.</li>
-                </ul>
-            </div>
+                <div class="card rounded-0 mb-4">
+                    <div class="card-body">
+                        <h2 class="h5 fw-bold">
+                            Order #@order.Id
+                        </h2>
 
-            <div class="d-grid gap-2">
-                <button @onclick="GoToCatalog" class="btn btn-dark py-3 fw-bold text-uppercase rounded-0">
+                        <p class="mb-1">
+                            Date: @order.OrderDate.ToString("yyyy-MM-dd HH:mm")
+                        </p>
+
+                        <p class="mb-1">
+                            Status: @order.Status
+                        </p>
+
+                        <hr />
+
+                        <h3 class="h6 fw-bold">Purchased Items</h3>
+
+                        <ul class="list-group list-group-flush">
+                            @foreach (var item in order.OrderItems)
+                            {
+                                <li class="list-group-item px-0">
+                                    <strong>@item.ProductName</strong>
+
+                                    @if (!string.IsNullOrWhiteSpace(item.Size))
+                                    {
+                                        <div>Option: @item.Size</div>
+                                    }
+
+                                    <div>Quantity: @item.Quantity</div>
+
+                                    <div>
+                                        Unit price: @item.Price.ToString("C")
+                                    </div>
+
+                                    <div>
+                                        Subtotal:
+                                        @((item.Price * item.Quantity).ToString("C"))
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between">
+                            <strong>Total</strong>
+                            <strong>@order.TotalAmount.ToString("C")</strong>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                <a href="/catalog" class="btn btn-dark rounded-0">
                     Continue Shopping
-                </button>
-                <button @onclick="GoToHome" class="btn btn-outline-dark py-2 fw-bold text-uppercase rounded-0 border-2">
+                </a>
+
+                <a href="/" class="btn btn-outline-dark rounded-0">
                     Back to Home
-                </button>
+                </a>
             </div>
-            
-            <p class="mt-5 text-muted x-small">Order ID: #@GenerateOrderNumber()</p>
+
         </div>
     </div>
 </div>
 
 @code {
-    private void GoToCatalog() => NavManager.NavigateTo("/catalog");
-    private void GoToHome() => NavManager.NavigateTo("/");
+    [Parameter]
+    public int OrderId { get; set; }
 
-    // Apenas para efeito visual, já que o carrinho foi limpo
-    private string GenerateOrderNumber()
+    private Order? order;
+    private bool isLoading = true;
+    private bool loadFailed;
+
+    protected override async Task OnParametersSetAsync()
     {
-        return Random.Shared.Next(100000, 999999).ToString();
+        order = null;
+        loadFailed = false;
+        isLoading = true;
+
+        var customer = AuthService.CurrentUser;
+
+        if (customer is null || OrderId <= 0)
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            await using var db = await DbFactory.CreateDbContextAsync();
+
+            var savedOrder = await db.Orders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o =>
+                    o.Id == OrderId &&
+                    o.UserId == customer.Id);
+
+            if (ReferenceEquals(AuthService.CurrentUser, customer))
+                order = savedOrder;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex);
+            loadFailed = true;
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 }
-
-<style>
-    .x-small {
-        font-size: 0.75rem;
-        letter-spacing: 1px;
-    }
-    
-    .container {
-        animation: fadeIn 0.8s ease-in-out;
-    }
-
-    /* Use @@ para fazer o escape do símbolo no Blazor */
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-</style>

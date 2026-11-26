@@ -7,13 +7,15 @@
 
 @inject CartService CartService
 @inject NavigationManager NavManager
-@inject PetShopApp.Data.ApplicationDbContext DbContext
 @inject AuthService AuthService
+@inject OrderService OrderService
 
 @* --- CHECKOUT COMPONENT ---
     Purpose: Orchestrates the final purchase flow. It collects user billing/shipping info,
     performs strict data validation, and persists the final transaction to the SQLite database.
 *@
+
+<PageTitle>Checkout | Pet Love Care</PageTitle>
 
 <div class="container mt-5 pt-5 pb-5">
     @* --- NAVIGATION BREADCRUMBS --- *@
@@ -24,22 +26,7 @@
         </ol>
     </nav>
 
-    @if (showSuccessMessage)
-    {
-        @* --- SUCCESS FEEDBACK AREA --- *@
-        <div class="text-center py-5">
-            <div class="bg-black border border-secondary p-5 shadow-lg">
-                <i class="bi bi-check-circle-fill display-1" style="color: #CCFF00;"></i>
-                <h2 class="mt-4 fw-bold text-white text-uppercase" style="letter-spacing: 3px;">Order Placed Successfully!</h2>
-                <p class="text-secondary mt-2 mb-4">Your profile has been updated and your order is being processed.</p>
-                <div class="d-flex justify-content-center gap-3">
-                    <a href="/catalog" class="btn btn-outline-light rounded-0 px-4 fw-bold">CONTINUE SHOPPING</a>
-                    <a href="/profile" class="btn rounded-0 px-4 fw-bold" style="background-color: #CCFF00; color: black;">VIEW MY PROFILE</a>
-                </div>
-            </div>
-        </div>
-    }
-    else if (CartService.CartItems.Any())
+    @if (CartService.CartItems.Any())
     {
         <div class="row g-4">
             @* --- LEFT COLUMN: BILLING & PAYMENT FORM --- *@
@@ -52,6 +39,13 @@
                     <h5 class="fw-bold mb-4">Billing Details</h5>
 
                     @* EditForm: Manages the checkout form state and triggers HandleCheckout only if validation passes *@
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
                     <EditForm Model="@checkoutModel" OnValidSubmit="HandleCheckout">
                         <DataAnnotationsValidator />
                         
@@ -104,29 +98,6 @@
                                 <label class="form-label fw-bold">Country</label>
                                 <InputText class="form-control rounded-0" @bind-Value="checkoutModel.Country" />
                                 <ValidationMessage For="@(() => checkoutModel.Country)" />
-                            </div>
-                        </div>
-
-                        @* --- PAYMENT SECTION (SENSITIVE DATA) --- *@
-                        <h5 class="fw-bold mt-4 mb-3 text-uppercase">Payment</h5>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Card Number</label>
-                            <InputText class="form-control rounded-0" @bind-Value="checkoutModel.CardNumber" />
-                            <ValidationMessage For="@(() => checkoutModel.CardNumber)" />
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Expiry Date</label>
-                                <InputText class="form-control rounded-0" @bind-Value="checkoutModel.ExpiryDate" placeholder="MM/YY" />
-                                <ValidationMessage For="@(() => checkoutModel.ExpiryDate)" />
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">CVV</label>
-                                <InputText class="form-control rounded-0" @bind-Value="checkoutModel.CVV" />
-                                <ValidationMessage For="@(() => checkoutModel.CVV)" />
                             </div>
                         </div>
 
@@ -205,28 +176,33 @@
 
 @code {
     private CheckoutModel checkoutModel = new();
-    private bool showSuccessMessage = false;
+    private string errorMessage = string.Empty;
     private bool isProcessing = false;
 
+            /// <summary>
+        /// Requires authentication before loading the checkout form.
+        /// </summary>
     protected override void OnInitialized()
     {
-        if (AuthService.CurrentUser != null)
-        {
-            var user = AuthService.CurrentUser;
+            // Redirect visitors before displaying checkout details.
+            if (AuthService.CurrentUser is not { } customer)
+            {
+                NavManager.NavigateTo("/login");
+                return;
+            }
 
-            // Split name for the form fields
-            var names = user.Name.Split(' ');
-            checkoutModel.FirstName = names.Length > 0 ? names[0] : "";
-            checkoutModel.LastName = names.Length > 1 ? string.Join(" ", names.Skip(1)) : "";
+            // Prefill contact and shipping details from the authenticated account.
+            var names = customer.Name.Split(
+                ' ', StringSplitOptions.RemoveEmptyEntries);
 
-            // Mapeamento direto dos dados que o cliente preencheu no Profile
-            checkoutModel.Email = user.Email;
-            checkoutModel.Phone = user.Phone ?? "";
-            checkoutModel.Address = user.Address ?? "";
-            checkoutModel.City = user.City ?? "";
-            checkoutModel.PostalCode = user.ZipCode ?? "";
-            checkoutModel.Country = user.Country ?? "";
-        }
+            checkoutModel.FirstName = names.FirstOrDefault() ?? "";
+            checkoutModel.LastName = string.Join(" ", names.Skip(1));
+            checkoutModel.Email = customer.Email;
+            checkoutModel.Phone = customer.Phone ?? "";
+            checkoutModel.Address = customer.Address ?? "";
+            checkoutModel.City = customer.City ?? "";
+            checkoutModel.PostalCode = customer.ZipCode ?? "";
+            checkoutModel.Country = customer.Country ?? "";
     }
 
     /// <summary>
@@ -235,83 +211,53 @@
     /// </summary>
     private async Task HandleCheckout()
     {
-        if(isProcessing)
+        if (isProcessing)
             return;
-        var customer = AuthService.CurrentUser;
 
-        if(customer is null)
+        if (AuthService.CurrentUser is null)
         {
             NavManager.NavigateTo("/login");
             return;
         }
+
         if (!CartService.CartItems.Any())
             return;
+
+        errorMessage = string.Empty;
         isProcessing = true;
 
-        try 
+        try
         {
-            // 1. PROFILE SYNC: Persist form data to the User record in SQLite
-            if (AuthService.CurrentUser != null)
+            var request = new CreateOrderRequest
             {
-                var userInDb = await DbContext.Users.FirstOrDefaultAsync(u => u.Id == AuthService.CurrentUser.Id);
-                if (userInDb != null)
-                {
-                    userInDb.Address = checkoutModel.Address;
-                    userInDb.City = checkoutModel.City;
-                    userInDb.ZipCode = checkoutModel.PostalCode;
-                    userInDb.Country = checkoutModel.Country;
-                    userInDb.Phone = checkoutModel.Phone;
-
-                    // Update memory session
-                    AuthService.CurrentUser.Address = checkoutModel.Address;
-                    AuthService.CurrentUser.City = checkoutModel.City;
-                    AuthService.CurrentUser.ZipCode = checkoutModel.PostalCode;
-                    AuthService.CurrentUser.Country = checkoutModel.Country;
-                    AuthService.CurrentUser.Phone = checkoutModel.Phone;
-                }
-            }
-
-            // 2. DATA TRANSFORMATION: Map cart items to OrderItem entities
-            var orderItems = CartService.CartItems.Select(i => new OrderItem 
-            {
-                ProductId = i.Product.Id,
-                ProductName = i.Product.Name,
-                ImageUrl = i.Product.ImageUrl,
-                Size = i.Size,
-                Quantity = i.Quantity,
-                Price = i.UnitPrice
-            }).ToList();
-
-            // 3. ASSEMBLY: Create the comprehensive Order object
-            var newOrder = new Order
-            {
-                UserId = customer.Id,
-                CustomerName = $"{checkoutModel.FirstName} {checkoutModel.LastName}",
+                CustomerName = $"{checkoutModel.FirstName.Trim()} {checkoutModel.LastName.Trim()}",
                 CustomerEmail = checkoutModel.Email,
-                ShippingAddress = $"{checkoutModel.Address}, {checkoutModel.City}, {checkoutModel.Country} - {checkoutModel.PostalCode}",
-                TotalAmount = CartService.TotalPrice,
-                OrderDate = DateTime.Now,
-                Status = "Processing",
-                OrderItems = orderItems
+                CustomerPhone = checkoutModel.Phone,
+                ShippingAddress =
+                    $"{checkoutModel.Address}, {checkoutModel.City}, " +
+                    $"{checkoutModel.Country} - {checkoutModel.PostalCode}",
+
+                Items = CartService.CartItems.Select(item => new CreateOrderLine
+                {
+                    ProductId = item.Product.Id,
+                    Size = item.Size,
+                    Quantity = item.Quantity
+                }).ToList()
             };
 
-            // 4. PERSISTENCE: Save everything to SQLite
-            DbContext.Orders.Add(newOrder);
-            await DbContext.SaveChangesAsync();
+            int savedOrderId = await OrderService.CreateOrderAsync(request);
 
-            // 5. SESSION UPDATE: Update order history in memory
-            if (ReferenceEquals(AuthService.CurrentUser, customer))
-                {
-                    customer.OrderHistory.Add(newOrder);
-                }
-
-            // 6. FINALIZATION: Clear cart and show success view
             CartService.ClearCart();
-            showSuccessMessage = true;
+            NavManager.NavigateTo($"/order-success/{savedOrderId}");
+        }
+        catch (ArgumentException ex)
+        {
+            errorMessage = ex.Message;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Critical error during checkout: {ex.Message}");
+            Console.Error.WriteLine(ex);
+            errorMessage = "Your order could not be placed. Please try again.";
         }
         finally
         {
@@ -352,16 +298,5 @@
         [RegularExpression(@"^[a-zA-Z\s]+$", ErrorMessage = "Only letters are allowed.")]
         public string Country { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Card number is required.")]
-        [RegularExpression(@"^[0-9]{13,19}$", ErrorMessage = "Must be 13-19 digits.")]
-        public string CardNumber { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Expiry date is required.")]
-        [RegularExpression(@"^(0[1-9]|1[0-2])\/([0-9]{2})$", ErrorMessage = "Use MM/YY.")]
-        public string ExpiryDate { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "CVV is required.")]
-        [RegularExpression(@"^[0-9]{3,4}$", ErrorMessage = "Must be 3-4 digits.")]
-        public string CVV { get; set; } = string.Empty;
     }
 }

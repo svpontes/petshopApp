@@ -21,7 +21,11 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<OrderService>();
+// Register order creation and customer order history services.
+builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<CustomerOrderHistoryService>();
+
 var app = builder.Build();
 
 // Seeder added by Rebecca: Just helps test the database

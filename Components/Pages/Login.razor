@@ -1,6 +1,7 @@
 @page "/login"
 @inject PetShopApp.Services.AuthService AuthService
 @inject NavigationManager NavManager
+@layout NoHeaderFooterLayout
 
 @* --- LOGIN PAGE ---
    Purpose: Provides an interface for user authentication.
@@ -8,49 +9,80 @@
    role-based navigation upon a successful session start.
 *@
 
-<div class="row justify-content-center align-items-center min-vh-100" style="padding-top: 24px;">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-lg p-4 bg-black text-white rounded-0">
-            <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">LOGIN</h2>
+<PageTitle>Login | Pet Love Care</PageTitle>
 
-            <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
-                <div class="mb-3">
-                    <label for="login-email" class="small fw-bold text-secondary">EMAIL</label>
-                    <input id="login-email" type="email" @bind="email"
-                           autocomplete="username"
-                           class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
-                </div>
-
-                <div class="mb-4">
-                    <label for="login-password" class="small fw-bold text-secondary">PASSWORD</label>
-                    <input id="login-password" type="password" @bind="password"
-                           autocomplete="current-password"
-                           class="form-control bg-transparent border-secondary text-white rounded-0 py-2" />
-                    <a href="/forgot-password"
-                       class="d-block text-end mt-1 small text-secondary text-decoration-none hover-white">
-                        Forgot password? Click here!
-                    </a>
-                </div>
-
-                @if (!string.IsNullOrEmpty(errorMessage))
-                {
-                    <div role="alert" class="alert alert-danger bg-transparent border-danger text-danger rounded-0 small py-2 mb-3">
-                        <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
-                        @errorMessage
-                    </div>
-                }
-
-                <button type="submit"
-                        class="btn btn-light w-100 fw-bold py-2 rounded-0 mb-3"
-                        disabled="@isSigningIn">
-                    @(isSigningIn ? "SIGNING IN..." : "SIGN IN")
-                </button>
-            </form>
-
-            <div class="text-center">
-                <a href="/register" class="text-secondary small text-decoration-none hover-white">
-                    Don't have an account? Sign Up
+<div class="signIn-container">
+    <div class="signIn-banner">
+        <div class="signIn-banner-container">
+            <section class="signIn-banner-content">
+                <a href="/" title="Home">
+                    <img class="signIn-banner-logo" src="/images/pet-love-care-logo.png" alt="A woman and cat inside a white heart as the logo app">
                 </a>
+                <h2>Hello, Pet Lover!</h2>
+                <p>The best products for your beloved pet. High-quality, certified products. 100% guarantee!</p>
+            </section>
+            <footer>
+                <p class="small">© 2026 Designed and develop by 
+                    <a href="https://github.com/chrisperaza" target="_blank" rel="noopener noreferrer">chrisperaza</a>, 
+                    <a href="https://github.com/RebeccaSond" target="_blank" rel="noopener noreferrer">RebeccaSond</a>, 
+                    <a href="https://github.com/STU6266" target="_blank" rel="noopener noreferrer">STU6266</a>, and 
+                    <a href="https://github.com/svpontes" target="_blank" rel="noopener noreferrer">svpontes</a>
+                </p>
+            </footer>
+        </div>
+    </div>
+
+    <div class="signIn-content">
+        <div class="signIn-content-container">
+            <a href="/" title="Home">
+                <img class="signIn-content-logo" src="/images/pet-love-care-logo-letters-red.webp" alt="Pet Love Care logo in red.">
+            </a>
+
+            <div class="signIn-content-formContainer">
+                <div>
+                    <div class="card border-0 rounded-0">
+                        <h1 class="mb-2">Login</h1>
+
+                        <div>
+                            <p class="small">
+                                Don't have an account? <a href="/register">Register now</a>
+                            </p>
+                        </div>
+
+                        <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
+                            <div class="mb-3">
+                                <label for="login-email" class="small fw-bold">Email</label>
+                                <input id="login-email" type="email" @bind="email"
+                                    autocomplete="username"
+                                    class="form-control py-2" />
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="login-password" class="small fw-bold">Password</label>
+                                <input id="login-password" type="password" @bind="password"
+                                    autocomplete="current-password"
+                                    class="form-control py-2" />
+                                <a href="/forgot-password" class="d-block text-end mt-1 small">
+                                    Forgot password?
+                                </a>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div role="alert" class="alert alert-danger bg-transparent border-danger text-danger rounded-0 small py-2 mb-3">
+                                    <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
+                                    @errorMessage
+                                </div>
+                            }
+
+                            <button type="submit"
+                                    class="w-100 small mb-3"
+                                    disabled="@isSigningIn">
+                                @(isSigningIn ? "Signing in..." : "Sign in")
+                            </button>
+                        </form
+                    </div>
+                </div>
             </div>
         </div>
     </div>
