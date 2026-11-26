@@ -179,25 +179,30 @@
     private string errorMessage = string.Empty;
     private bool isProcessing = false;
 
+            /// <summary>
+        /// Requires authentication before loading the checkout form.
+        /// </summary>
     protected override void OnInitialized()
     {
-    if (AuthService.CurrentUser != null)
-    {
-        var user = AuthService.CurrentUser;
-        
-        // Split name for the form fields
-        var names = user.Name.Split(' ');
-        checkoutModel.FirstName = names.Length > 0 ? names[0] : "";
-        checkoutModel.LastName = names.Length > 1 ? string.Join(" ", names.Skip(1)) : "";
-        
-        // Mapeamento direto dos dados que o cliente preencheu no Profile
-        checkoutModel.Email = user.Email;
-        checkoutModel.Phone = user.Phone ?? "";
-        checkoutModel.Address = user.Address ?? "";
-        checkoutModel.City = user.City ?? "";
-        checkoutModel.PostalCode = user.ZipCode ?? "";
-        checkoutModel.Country = user.Country ?? "";
-        }
+            // Redirect visitors before displaying checkout details.
+            if (AuthService.CurrentUser is not { } customer)
+            {
+                NavManager.NavigateTo("/login");
+                return;
+            }
+
+            // Prefill contact and shipping details from the authenticated account.
+            var names = customer.Name.Split(
+                ' ', StringSplitOptions.RemoveEmptyEntries);
+
+            checkoutModel.FirstName = names.FirstOrDefault() ?? "";
+            checkoutModel.LastName = string.Join(" ", names.Skip(1));
+            checkoutModel.Email = customer.Email;
+            checkoutModel.Phone = customer.Phone ?? "";
+            checkoutModel.Address = customer.Address ?? "";
+            checkoutModel.City = customer.City ?? "";
+            checkoutModel.PostalCode = customer.ZipCode ?? "";
+            checkoutModel.Country = customer.Country ?? "";
     }
 
     /// <summary>
