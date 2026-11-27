@@ -1,15 +1,15 @@
 @page "/catalog"
-@using Microsoft.EntityFrameworkCore
 @using PetShopApp.Models
 @using PetShopApp.Components
 @using PetShopApp.Components.Shared
 @inject PetShopApp.Services.ProductService ProductService
+@inject ILogger<Catalog> Logger
 @rendermode InteractiveServer
 @inject PetShopApp.Services.CartService CartService
 
 @* --- PRODUCT CATALOG COMPONENT ---
-   Purpose: Displays the full collection of available products.
-   Includes features like dynamic image rendering, size badges, 
+   Purpose: Displays available products and filters them by their category ID.
+   Includes features like dynamic image rendering, size badges,
    and an integrated Quick View purchasing system.
 *@
 
@@ -18,11 +18,59 @@
 <section class="container py-5">
     <h2 class="fw-bold text-uppercase mb-4">Products</h2>
 
-    @* --- EMPTY STATE HANDLER --- *@
-    @if (products == null || !products.Any())
+    @* Load category options through the shared service and bind the selected ID. *@
+    <div class="row align-items-end g-3 mb-4">
+        <div class="col-12 col-md-6 col-lg-4">
+            <label for="catalog-category" class="form-label fw-bold">
+                Category
+            </label>
+            <select id="catalog-category"
+                    class="form-select rounded-0"
+                    @bind="selectedCategoryId"
+                    @bind:after="LoadCatalogAsync"
+                    disabled="@isLoading">
+                <option value="">All categories</option>
+                @foreach (var category in categories)
+                {
+                    <option @key="category.Id" value="@category.Id">
+                        @category.Name
+                    </option>
+                }
+            </select>
+        </div>
+        @if (!isLoading && string.IsNullOrEmpty(loadError))
+        {
+            <div class="col-12 col-md-auto">
+                <p class="text-muted small mb-0" role="status" aria-live="polite">
+                    @products.Count product(s) found.
+                </p>
+            </div>
+        }
+    </div>
+
+    @* Distinguish loading, failed queries and genuinely empty category results. *@
+    @if (isLoading)
+    {
+        <p class="text-muted py-4" role="status">Loading products...</p>
+    }
+    else if (!string.IsNullOrEmpty(loadError))
+    {
+        <div class="alert alert-danger rounded-0" role="alert">
+            <p>@loadError</p>
+            <button type="button" class="btn btn-outline-dark rounded-0"
+                    @onclick="LoadCatalogAsync">
+                Try again
+            </button>
+        </div>
+    }
+    else if (products.Count == 0)
     {
         <div class="text-center py-5">
-            <p class="lead text-muted mb-0">No products available yet.</p>
+            <p class="lead text-muted mb-0">
+                @(selectedCategoryId is null
+                    ? "No products available yet."
+                    : "No products in this category.")
+            </p>
         </div>
     }
     else
@@ -31,7 +79,7 @@
         <div class="row g-4">
             @foreach (var product in products)
             {
-                <div class="col-12 col-md-6 col-lg-4">
+                <div @key="product.Id" class="col-12 col-md-6 col-lg-4">
                     <div class="card h-100 border-0 shadow-sm">
                         @* Navigation link to the full product detail page *@
                         <a href="/product/@product.Id" class="text-decoration-none text-dark">
@@ -86,7 +134,7 @@
                                     @onclick="() => OpenQuickView(product)">
                                     ADD TO CART
                                 </button>
-                                
+
                             </div>
                         </div>
                     </div>
@@ -108,25 +156,90 @@
 
 @code {
     private List<Product> products = new();
+    private List<Category> categories = new();
+    private int? selectedCategoryId;
+    private bool isLoading = true;
+    private string loadError = "";
+
+    // Only the latest category request may update the visible catalog.
+    private int catalogLoadVersion;
     private bool isPanelOpen;
     private Product? selectedProduct;
     private readonly Dictionary<int, ProductVariant> selectedVariants = new();
     /// <summary>
-    /// Lifecycle method: Fetches products from the database alphabetically by name.
-    /// Includes data sanitization for images and sizes.
+    /// Loads the first unfiltered catalog and its category options.
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        products = await ProductService.GetCatalogProductsAsync();
-        foreach (var product in products)
+        await LoadCatalogAsync();
+    }
+
+    /// <summary>
+    /// Reloads category options and the products belonging to the selected category.
+    /// Stale asynchronous responses cannot replace a more recent selection.
+    /// </summary>
+    private async Task LoadCatalogAsync()
+    {
+        var requestVersion = ++catalogLoadVersion;
+        var requestedCategoryId = selectedCategoryId;
+        isLoading = true;
+        loadError = "";
+
+        // Close the old product panel before replacing the displayed collection.
+        isPanelOpen = false;
+        selectedProduct = null;
+
+        try
         {
-            var defaultVariant = product.Variants.FirstOrDefault(
-            variant => GetWeightInPounds(variant.Label) == 2.2m);
-        
-            if (defaultVariant is not null)
+            var loadedCategories = await ProductService.GetCategoriesAsync();
+
+            // Return to all products if the previously selected category was removed.
+            if (requestedCategoryId is int categoryId &&
+                !loadedCategories.Any(category => category.Id == categoryId))
             {
-                selectedVariants.TryAdd(product.Id, defaultVariant);
+                requestedCategoryId = null;
             }
+
+            var loadedProducts = await ProductService
+                .GetCatalogProductsAsync(requestedCategoryId);
+
+            if (requestVersion != catalogLoadVersion)
+                return;
+
+            categories = loadedCategories;
+            products = loadedProducts;
+            selectedCategoryId = requestedCategoryId;
+            selectedVariants.Clear();
+
+            foreach (var product in products)
+            {
+                // Prefer 2.2 lb; otherwise select the first available ordered variant.
+                var defaultVariant = product.Variants.FirstOrDefault(
+                    variant => GetWeightInPounds(variant.Label) == 2.2m)
+                    ?? product.Variants
+                        .OrderBy(variant => GetWeightInPounds(variant.Label))
+                        .ThenBy(variant => variant.Id)
+                        .FirstOrDefault();
+
+                if (defaultVariant is not null)
+                    selectedVariants[product.Id] = defaultVariant;
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "The product catalog could not be loaded.");
+
+            if (requestVersion == catalogLoadVersion)
+            {
+                products.Clear();
+                selectedVariants.Clear();
+                loadError = "We couldn't load the catalog. Please try again.";
+            }
+        }
+        finally
+        {
+            if (requestVersion == catalogLoadVersion)
+                isLoading = false;
         }
     }
 
@@ -172,20 +285,27 @@
         CartService.AddToCart(product, variant.Label, 1, variant);
     }
     }
-    private static decimal GetWeightInPounds(string label)
+    private static decimal GetWeightInPounds(string? label)
     {
-    var text = label.Trim();
+    // Accept labels such as "2.2 lb" and "2.2lb".
+    var text = label?.Trim() ?? "";
 
-    if (text.EndsWith(" lb", StringComparison.OrdinalIgnoreCase) &&
-        decimal.TryParse(
-            text[..^3].Trim(),
+    if (!text.EndsWith("lb", StringComparison.OrdinalIgnoreCase))
+        return decimal.MaxValue;
+
+    // Read the numeric weight independently of the computer's culture.
+    var numericText = text[..^2].Trim();
+
+    if (decimal.TryParse(
+            numericText,
             System.Globalization.NumberStyles.AllowDecimalPoint,
             System.Globalization.CultureInfo.InvariantCulture,
-            out var weight))
+            out var weight) && weight > 0)
     {
         return weight;
     }
 
+    // Place unrecognized options after valid weights.
     return decimal.MaxValue;
     }
 }
