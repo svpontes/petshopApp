@@ -188,13 +188,19 @@
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
+        // Reject deleted accounts and sessions with an invalid security stamp.
+        if (!await AuthService.IsAuthorizedAsync())
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         if (AuthService.CurrentUser != null)
         {
             SyncFields(); // Populate local variables with CurrentUser data
 
-            // Query orders from the database matching the user's email
+            // Associate purchase history with the authenticated account ID.
             userOrders = await DbContext.Orders
-                .Where(o => o.CustomerEmail == AuthService.CurrentUser!.Email)
+                .Where(o => o.UserId == AuthService.CurrentUser!.Id)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
 
@@ -242,6 +248,12 @@
     /// </summary>
     private async Task SaveChanges()
     {
+        // Reject deleted accounts and sessions with an invalid security stamp.
+        if (!await AuthService.IsAuthorizedAsync())
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         var userId = AuthService.CurrentUser?.Id;
         if (userId == null) return;
 

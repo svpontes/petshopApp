@@ -182,3 +182,8 @@ and products created on one developer's machine are not shared with the team.
 To test product management, sign in with a local account that has the `Admin`
 role and select **Manage Products** from the admin dashboard. New accounts
 created through the registration page have the `Customer` role by default.
+## Local accounts and authorization
+
+See [Local Identity accounts and authorization](docs/security/identity-local-accounts.md)
+for isolated database setup, development administrator access, authorization checks,
+and the required verification scenarios.

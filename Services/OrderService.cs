@@ -37,6 +37,9 @@ public class OrderService
 
     public async Task<int> CreateOrderAsync(CreateOrderRequest request)
     {
+        // Enforce account authorization inside the service as well as the UI.
+        if (!await _authService.IsAuthorizedAsync())
+            throw new UnauthorizedAccessException("Please sign in again.");
         var errors = Validate(request);
         if (errors.Count > 0)
             throw new ArgumentException(string.Join(" ", errors));

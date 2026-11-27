@@ -139,6 +139,12 @@
         totalMessages = await DbContext.ContactMessages.CountAsync();
         subscriberCount = await DbContext.Subscribers.CountAsync();
         
+        // Recheck administrator access immediately before this operation.
+        if (!await Auth.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         // Calculate financial performance if orders exist
         if (totalOrders > 0)
         {

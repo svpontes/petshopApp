@@ -169,6 +169,12 @@ else
 
     private async Task HandleUpdate()
     {
+        // Reject deleted accounts and sessions with an invalid security stamp.
+        if (!await AuthService.IsAuthorizedAsync())
+        {
+            NavManager.NavigateTo("/login");
+            return;
+        }
         
         if (isSaving)
             return;

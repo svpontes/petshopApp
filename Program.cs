@@ -98,7 +98,16 @@ builder.Services.AddScoped<CustomerOrderHistoryService>();
 
 // Build the application after registering all required services.
 var app = builder.Build();
+// Run local role setup only when explicitly requested from the command line.
+if (args.Length > 0 && args[0] == "--grant-development-admin")
+{
+    if (args.Length != 2)
+        throw new InvalidOperationException(
+            "Usage: --grant-development-admin <registered-local-email>");
 
+    await DevelopmentAdminSetup.GrantAsync(app.Services, app.Environment, args[1]);
+    return;
+}
 // Apply migrations and prepare catalog data before initializing Identity.
 using (var scope = app.Services.CreateScope())
 {
