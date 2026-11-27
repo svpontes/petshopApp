@@ -112,3 +112,29 @@ Add only the services needed for agreed requirements. For database operations in
 5. Implement the agreed authentication approach and enforce authorization on protected operations.
 6. Connect pages and shared components gradually, checking that the project still builds.
 7. Work on task branches and submit changes for review before integration.
+
+## Automated tests
+
+Use .NET SDK 10.0.402.
+
+Run the following commands from the repository root:
+
+```powershell
+# Download dependencies for the application and test projects.
+dotnet restore .\PetShopApp.slnx
+
+# Build both projects using the restored dependencies.
+dotnet build .\PetShopApp.slnx --no-restore
+
+# Run the tests using the assemblies produced by the build.
+dotnet test .\PetShopApp.slnx --no-build --no-restore
+```
+
+The xUnit tests verify:
+
+- Products without options receive the advertised 10% discount.
+- Selected variants use their own discounted prices.
+- Repeated additions combine quantities without duplicate cart lines.
+
+Each test creates an independent in-memory cart. The tests do not
+start the application or access a developer's SQLite database.
