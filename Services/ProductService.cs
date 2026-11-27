@@ -16,4 +16,15 @@ public sealed class ProductService(IDbContextFactory<ApplicationDbContext> dbCon
             .OrderBy(product => product.Name)
             .ToListAsync();
     }
+
+    public async Task<Product?> GetProductByIdAsync(int productId)
+    {
+        await using var db = await dbContextFactory.CreateDbContextAsync();
+
+        return await db.Products
+            .AsNoTracking()
+            .Include(product => product.Variants)
+            .SingleOrDefaultAsync(product => product.Id == productId);
+    }
+
 }

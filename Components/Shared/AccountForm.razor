@@ -28,8 +28,11 @@
         errorMessage = "";
         try
         {
-            // Preserve cart selections before the full-page account request.
-            await CartStore.SaveAsync();
+            // Clear account selections on logout and preserve guest selections on login.
+            if (Action == "/account/logout")
+                await CartStore.ClearAsync();
+            else
+                await CartStore.SaveAsync();
             await using var module = await JS.InvokeAsync<IJSObjectReference>(
                 "import", "./js/accountForm.js");
             await module.InvokeVoidAsync("submit", form);
@@ -47,7 +50,7 @@
                 Action);
 
             errorMessage = "We couldn't submit the form. Please try again.";
-            submitting = false; 
+            submitting = false;
         }
     }
 }

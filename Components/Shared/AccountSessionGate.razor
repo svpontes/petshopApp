@@ -83,6 +83,10 @@ else
             ready = false;
             StateHasChanged();
             await AuthService.InitializeAsync((await stateTask).User);
+
+            // Recheck the cart owner whenever the authenticated principal changes.
+            if (RendererInfo.IsInteractive)
+                await CartStore.RestoreAsync();
             ready = true;
             StateHasChanged();
         });
