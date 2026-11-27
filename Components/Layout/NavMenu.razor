@@ -1,4 +1,5 @@
 @implements IDisposable
+@using PetShopApp.Components.Shared
 @inject PetShopApp.Services.AuthService AuthService
 
 <nav class="nav d-flex justify-content-end" aria-label="Main navigation">
@@ -21,25 +22,47 @@
             {
                 @* Open account options when the authenticated user clicks the icon. *@
                 <div class="dropdown">
+                    @* Display the account icon, greeting and dropdown indicator. *@
                     <button id="header-account-menu"
                             type="button"
                             class="account-toggle"
                             data-bs-toggle="dropdown"
+                            data-bs-offset="0,12"
                             aria-expanded="false"
                             aria-label="Open account options">
+
                         <i class="bi bi-person" aria-hidden="true"></i>
 
-                        <span class="account-greeting" title="@customer.Name">
-                            Hello, @GetFirstName(customer.Name)
+                        <span class="account-greeting-row">
+                            <span class="account-greeting" title="@customer.Name">
+                                Hello, @GetFirstName(customer.Name)
+                            </span>
+
+                            <span class="account-menu-caret"
+                                aria-hidden="true"></span>
                         </span>
                     </button>
 
-                    <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu rounded-0 shadow-sm"
+                    @* Display account actions inside the white dropdown panel. *@
+                    <ul class="dropdown-menu dropdown-menu-end account-dropdown-menu"
                         aria-labelledby="header-account-menu">
+
                         <li>
                             <a href="/profile" class="dropdown-item">
                                 My Account
                             </a>
+                        </li>
+
+                        <li>
+                            @* Use the existing protected logout flow. *@
+                            <AccountForm Action="/account/logout">
+                                <button type="submit"
+                                        class="dropdown-item account-logout">
+                                    <i class="bi bi-box-arrow-right"
+                                    aria-hidden="true"></i>
+                                    End session
+                                </button>
+                            </AccountForm>
                         </li>
                     </ul>
                 </div>
