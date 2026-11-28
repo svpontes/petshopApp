@@ -11,5 +11,8 @@ namespace PetShopApp.Models
         public string Label { get; set; } = string.Empty;
 
         public decimal Price { get; set; }
+
+        // Each priced option has independent inventory; zero means unavailable.
+        public int StockQuantity { get; set; }
     }
 }

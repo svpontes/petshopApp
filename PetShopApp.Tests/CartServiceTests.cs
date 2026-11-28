@@ -1,4 +1,4 @@
-﻿// Import the application's product and variant models.
+// Import the application's product and variant models.
 using PetShopApp.Models;
 
 // Import the actual cart service being tested.
@@ -32,6 +32,7 @@ public sealed class CartServiceTests
         {
             Id = 1,
             Name = "Cat collar",
+            StockQuantity = 100,
             Price = 10m
         };
 
@@ -73,6 +74,7 @@ public sealed class CartServiceTests
         {
             Id = 2,
             Name = "Dog food",
+            StockQuantity = 100,
             Price = 100m
         };
 
@@ -84,6 +86,7 @@ public sealed class CartServiceTests
             ProductId = product.Id,
             Product = product,
             Label = "2.2 lb",
+            StockQuantity = 100,
             Price = 20m
         };
 
@@ -124,6 +127,7 @@ public sealed class CartServiceTests
         {
             Id = 3,
             Name = "Cat food",
+            StockQuantity = 100,
             Price = 100m
         };
 
@@ -134,6 +138,7 @@ public sealed class CartServiceTests
             ProductId = product.Id,
             Product = product,
             Label = "2.2 lb",
+            StockQuantity = 100,
             Price = 20m
         };
 

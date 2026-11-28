@@ -5,6 +5,8 @@
 @using PetShopApp.Components.Shared
 @implements IDisposable
 @inject PetShopApp.Services.CartService CartService
+@inject PetShopApp.Services.ProductService ProductService
+@inject ILogger<ProductDetail> Logger
 @inject PetShopApp.Services.AuthService AuthService
 @inject PetShopApp.Data.ApplicationDbContext DbContext
 
@@ -87,7 +89,7 @@ else
                 <p class="lead mb-4 text-muted">@product.Description</p>
 
                 @if (product.Variants.Count > 0 ||
-                (optionLabel is not null && product.AvailableSizes.Count > 0))
+                product.AvailableSizes.Count > 0)
                 {
                      var options = product.Variants.Count > 0
                         ? product.Variants
@@ -109,21 +111,32 @@ else
                             {
                                 <button type="button"
                                         class="btn @(selectedSize == option ? "btn-dark" : "btn-outline-dark") px-4 py-2 fw-bold"
+                                        disabled="@(PetShopApp.Services.ProductStock.Quantity(product, option) <= 0)"
                                         @onclick="() => SelectSize(option)">
-                                    @option
+                                    @option @(PetShopApp.Services.ProductStock.Quantity(product, option) <= 0 ? "— OUT OF STOCK" : "")
                                 </button>
                             }
                         </div>
                     </div>
                 }   
 
+                @* A cart selection does not reserve inventory for other customers. *@
+                @if (PetShopApp.Services.ProductStock.IsSoldOut(product) ||
+                    (product.Variants.Count > 0 && SelectedVariant is not null && SelectedStock == 0))
+                {
+                    <p class="text-danger fw-bold" role="status">OUT OF STOCK</p>
+                }
+                @if (!string.IsNullOrEmpty(stockError))
+                {
+                    <div class="alert alert-warning rounded-0" role="alert">@stockError</div>
+                }
                 @* Quantity Adjustment Controls *@
                 <div class="mb-4">
                     <h5 class="fw-bold mb-3 text-uppercase">Quantity:</h5>
                     <div class="input-group" style="width: 140px;">
                         <button class="btn btn-outline-dark fw-bold" @onclick="DecreaseQuantity">-</button>
                         <input type="text" class="form-control text-center fw-bold border-dark bg-white" value="@quantity" readonly />
-                        <button class="btn btn-outline-dark fw-bold" @onclick="IncreaseQuantity">+</button>
+                        <button class="btn btn-outline-dark fw-bold" disabled="@(quantity >= RemainingStock || isAdding)" @onclick="IncreaseQuantity">+</button>
                     </div>
                 </div>
 
@@ -134,8 +147,8 @@ else
                 }
                 else
                 {
-                    <button class="btn btn-dark btn-lg w-100 fw-bold py-3 mt-3 shadow-sm text-uppercase" @onclick="AddToCart">
-                        Add to Cart
+                    <button class="btn btn-dark btn-lg w-100 fw-bold py-3 mt-3 shadow-sm text-uppercase" disabled="@(isAdding || PetShopApp.Services.ProductStock.IsSoldOut(product) || (SelectedVariant is not null && RemainingStock == 0))" @onclick="AddToCart">
+                        @(PetShopApp.Services.ProductStock.IsSoldOut(product) ? "OUT OF STOCK" : "Add to Cart")
                     </button>
                 }
             </div>
@@ -209,6 +222,10 @@ else
     private string selectedSize = string.Empty;
     private ProductVariant? SelectedVariant =>
     product?.Variants.FirstOrDefault(v => v.Label == selectedSize);
+    private int SelectedStock => product is null ? 0 : PetShopApp.Services.ProductStock.Quantity(product, product.Variants.Count > 0 ? selectedSize : null);
+    private int RemainingStock => product is null ? 0 : CartService.RemainingQuantity(product, product.Variants.Count > 0 ? selectedSize : null);
+    private string stockError = "";
+    private bool isAdding;
     private bool showSizeWarning = false;
     private bool showSuccessMessage = false;
     private string currentMainImageUrl = string.Empty;
@@ -224,9 +241,7 @@ else
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
-        product = await DbContext.Products
-        .Include(p => p.Variants)
-        .FirstOrDefaultAsync(p => p.Id == Id);
+        product = await ProductService.GetProductByIdAsync(Id);
 
         if (product != null)
         {
@@ -300,8 +315,8 @@ else
     // Logic for UI interactions
     private async void HandleCartChanged() => await InvokeAsync(StateHasChanged);
     private void ChangeMainImage(string url) => currentMainImageUrl = GetImageUrl(url);
-    private void SelectSize(string size) { selectedSize = size; showSizeWarning = false; }
-    private void IncreaseQuantity() { if (quantity < 10) quantity++; }
+    private void SelectSize(string size) { selectedSize = size; quantity = 1; showSizeWarning = false; stockError = ""; }
+    private void IncreaseQuantity() { if (quantity < RemainingStock) quantity++; }
     private void DecreaseQuantity() { if (quantity > 1) quantity--; }
 
     /// <summary>
@@ -310,37 +325,39 @@ else
 
     private async Task AddToCart()
     {
-    var currentProduct = product;
-    if (currentProduct is null)
-        return;
-
-    var variant = currentProduct.Variants
-        .FirstOrDefault(v => v.Label == selectedSize);
-
-    var hasVariants = currentProduct.Variants.Count > 0;
-    var requiresLegacyOption = !hasVariants &&
-                               optionLabel is not null &&
-                               currentProduct.AvailableSizes.Count > 0;
-
-    if ((hasVariants && variant is null) ||
-        (requiresLegacyOption && !currentProduct.AvailableSizes.Contains(selectedSize)))
-    {
-        showSizeWarning = true;
-        return;
+        if (isAdding || product is null) return;
+        isAdding = true;
+        stockError = "";
+        try
+        {
+            // Do not trust the product snapshot originally loaded by this page.
+            product = await ProductService.GetProductByIdAsync(product.Id);
+            if (product is null) return;
+            var variant = SelectedVariant;
+            var requiresSize = product.Variants.Count == 0 && product.AvailableSizes.Count > 0;
+            if ((product.Variants.Count > 0 && variant is null) ||
+                (requiresSize && !product.AvailableSizes.Contains(selectedSize)))
+            {
+                showSizeWarning = true;
+                return;
+            }
+            if (!CartService.AddToCart(product, variant?.Label ?? (requiresSize ? selectedSize : ""), quantity, variant))
+            {
+                stockError = CartService.LastError;
+                return;
+            }
+            showSuccessMessage = true;
+            await Task.Delay(1000);
+            showSuccessMessage = false;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Product detail inventory check failed.");
+            stockError = "We couldn't check availability. Please try again.";
+        }
+        finally { isAdding = false; }
     }
 
-    CartService.AddToCart(
-        currentProduct,
-        variant?.Label ?? (requiresLegacyOption ? selectedSize : string.Empty),
-        quantity,
-        variant);
-
-    showSuccessMessage = true;
-    await Task.Delay(1000);
-    showSuccessMessage = false;
-    StateHasChanged();
-    
-    }    
     private static decimal GetWeightInPounds(string label)
     {
     var text = label.Trim();

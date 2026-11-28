@@ -331,11 +331,11 @@ else
             }
 
             // CartService applies the current promotion.
-            CartService.AddToCart(
-                product,
-                option,
-                item.Quantity,
-                variant);
+            if (!CartService.AddToCart(product, option, item.Quantity, variant))
+            {
+                reorderMessage = CartService.LastError;
+                return;
+            }
 
             reorderFailed = false;
 
