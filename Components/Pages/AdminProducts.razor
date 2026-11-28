@@ -8,6 +8,7 @@
 @rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 @using PetShopApp.Data
+@inject IJSRuntime JS
 
 @* --- ADMIN PRODUCT MANAGEMENT ---
    Purpose: Centralized dashboard for administrators to manage the shirt inventory.
@@ -75,18 +76,16 @@
                             <InputTextArea @bind-Value="editingProduct.Description" class="form-control rounded-0" />
                         </div>
                         <div class="col-12">
-                        <label for="more-information" class="form-label small fw-bold">
-                            More Information
-                        </label>
-                        <InputTextArea id="more-information"
-                                    class="form-control rounded-0"
-                                    rows="4"
-                                    @bind-Value="editingProduct.MoreInformation" />
+                            <label for="more-information" class="form-label small fw-bold">
+                                More Information
+                            </label>
+                            <InputTextArea id="more-information" class="form-control rounded-0" rows="4"
+                                           @bind-Value="editingProduct.MoreInformation" />
                         </div>
                         <div class="col-md-6">
                             <label for="animal-type" class="form-label small fw-bold">Animal Type</label>
                             <InputSelect id="animal-type" @bind-Value="editingProduct.AnimalTypeId"
-                                        class="form-select rounded-0">
+                                         class="form-select rounded-0">
                                 <option value="0">Select an animal type</option>
                                 @foreach (var animal in animalTypes)
                                 {
@@ -98,7 +97,7 @@
                         <div class="col-md-6">
                             <label for="product-category" class="form-label small fw-bold">Category</label>
                             <InputSelect id="product-category" @bind-Value="editingProduct.CategoryId"
-                                        class="form-select rounded-0">
+                                         class="form-select rounded-0">
                                 <option value="">No category selected</option>
                                 @foreach (var category in categories)
                                 {
@@ -116,17 +115,16 @@
                             </div>
                         }
                         <div class="col-12">
-                                <label for="product-options" class="form-label small fw-bold">
-                                    Product Options
-                                </label>
-                                <InputText id="product-options"
-                                        class="form-control rounded-0"
-                                        @bind-Value="editingProduct.AvailableOptionsRaw"
-                                        placeholder="2.2 lb, 11 lb, 22 lb, 44 lb" />
-                                <small class="text-muted">
-                                    Separate options with commas. Leave blank if the product has no options.
-                                </small>
-                            </div>
+                            <label for="product-options" class="form-label small fw-bold">
+                                Product Options
+                            </label>
+                            <InputText id="product-options" class="form-control rounded-0"
+                                       @bind-Value="editingProduct.AvailableOptionsRaw"
+                                       placeholder="2.2 lb, 11 lb, 22 lb, 44 lb" />
+                            <small class="text-muted">
+                                Separate options with commas. Leave blank if the product has no options.
+                            </small>
+                        </div>
                         @* Action Buttons for the Form *@
                         <div class="col-12 d-flex gap-2">
                             <button type="submit" class="btn btn-dark rounded-0">
@@ -141,32 +139,32 @@
                     
                 </EditForm>
                 @if (editingProduct.Id > 0)
-                    {
-                            <div class="border-top mt-4 pt-3">
-                                <h5>Product Variants</h5>
+                {
+                    <div class="border-top mt-4 pt-3">
+                        <h5>Product Variants</h5>
 
-                                <EditForm Model="@newVariant" OnValidSubmit="AddVariantAsync">
-                                    <div class="mb-2">
-                                        <label for="variant-label" class="form-label">Option</label>
-                                        <InputText id="variant-label" class="form-control"
-                                                @bind-Value="newVariant.Label" placeholder="11 lb" />
-                                    </div>
-
-                                    <div class="mb-2">
-                                        <label for="variant-price" class="form-label">Unit Price</label>
-                                        <InputNumber id="variant-price" class="form-control"
-                                                    @bind-Value="newVariant.Price" step="0.01" />
-                                    </div>
-
-                                    <button type="submit" class="btn btn-dark">Add Variant</button>
-                                </EditForm>
-
-                                @if (!string.IsNullOrEmpty(variantMessage))
-                                {
-                                    <p class="mt-2" role="status">@variantMessage</p>
-                                }
+                        <EditForm Model="@newVariant" OnValidSubmit="AddVariantAsync">
+                            <div class="mb-2">
+                                <label for="variant-label" class="form-label">Option</label>
+                                <InputText id="variant-label" class="form-control" @bind-Value="newVariant.Label"
+                                           placeholder="11 lb" />
                             </div>
-                    }
+
+                            <div class="mb-2">
+                                <label for="variant-price" class="form-label">Unit Price</label>
+                                <InputNumber id="variant-price" class="form-control" @bind-Value="newVariant.Price"
+                                             step="0.01" />
+                            </div>
+
+                            <button type="submit" class="btn btn-dark">Add Variant</button>
+                        </EditForm>
+
+                        @if (!string.IsNullOrEmpty(variantMessage))
+                        {
+                            <p class="mt-2" role="status">@variantMessage</p>
+                        }
+                    </div>
+                }
             </div>
         </div>
 
@@ -217,7 +215,9 @@
                                         <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditProduct(p)">
                                             Edit
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProduct(p.Id)">
+                                        @* Rebecca - Replaced original delete button for ConfirmDelete to add "are you sure" popup when deleting a product *@
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => ConfirmDelete(p.Id, p.Name)">
                                             Delete
                                         </button>
                                     </td>
@@ -262,7 +262,7 @@
     protected override async Task OnInitializedAsync()
     {
 
-          // Recheck administrator access immediately before this operation.
+        // Recheck administrator access immediately before this operation.
         if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
         {
             NavManager.NavigateTo("/");
@@ -299,28 +299,28 @@
     /// </summary>
     private Task EditProduct(Product p)
     {
-    newVariant = new ProductVariant();
-    variantMessage = "";
+        newVariant = new ProductVariant();
+        variantMessage = "";
 
-    editingProduct = new Product
-    {
-        Id = p.Id,
-        Name = p.Name,
-        Description = p.Description,
-        MoreInformation = p.MoreInformation,
-        Price = p.Price,
-        ImageUrl = p.ImageUrl,
-        SecondaryImageUrlsRaw = p.SecondaryImageUrlsRaw,
-        AnimalTypeId = p.AnimalTypeId,
-        CategoryId = p.CategoryId,
-        Category = p.Category,
-        AvailableOptionsRaw = p.AvailableOptionsRaw
-    };
+        editingProduct = new Product
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Description = p.Description,
+            MoreInformation = p.MoreInformation,
+            Price = p.Price,
+            ImageUrl = p.ImageUrl,
+            SecondaryImageUrlsRaw = p.SecondaryImageUrlsRaw,
+            AnimalTypeId = p.AnimalTypeId,
+            CategoryId = p.CategoryId,
+            Category = p.Category,
+            AvailableOptionsRaw = p.AvailableOptionsRaw
+        };
 
-    secondaryImagesText = p.SecondaryImageUrlsRaw ?? "";
-    productError = "";
+        secondaryImagesText = p.SecondaryImageUrlsRaw ?? "";
+        productError = "";
 
-    return Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -419,48 +419,62 @@
     private string variantMessage = "";
 
     private async Task AddVariantAsync()
+    {
+        // Recheck administrator access immediately before this operation.
+        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
         {
-            // Recheck administrator access immediately before this operation.
-            if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
-            {
             NavManager.NavigateTo("/");
             return;
         }
-            variantMessage = "";
+        variantMessage = "";
 
-            if (!AuthService.IsAdmin || editingProduct.Id <= 0)
-                return;
+        if (!AuthService.IsAdmin || editingProduct.Id <= 0)
+            return;
 
-            var productId = editingProduct.Id;
-            var label = newVariant.Label?.Trim() ?? "";
-            var price = newVariant.Price;
+        var productId = editingProduct.Id;
+        var label = newVariant.Label?.Trim() ?? "";
+        var price = newVariant.Price;
 
-            if (label.Length == 0 || price <= 0)
-            {
-                variantMessage = "Enter an option and a price greater than zero.";
-                return;
-            }
+        if (label.Length == 0 || price <= 0)
+        {
+            variantMessage = "Enter an option and a price greater than zero.";
+            return;
+        }
 
-            var exists = await DbContext.ProductVariants.AnyAsync(
-                variant => variant.ProductId == productId && variant.Label == label);
+        var exists = await DbContext.ProductVariants.AnyAsync(
+            variant => variant.ProductId == productId && variant.Label == label);
 
-            if (exists)
-            {
-                variantMessage = "This option already exists for this product.";
-                return;
-            }
+        if (exists)
+        {
+            variantMessage = "This option already exists for this product.";
+            return;
+        }
 
-            DbContext.ProductVariants.Add(new ProductVariant
-            {
-                ProductId = productId,
-                Label = label,
-                Price = price
-            });
+        DbContext.ProductVariants.Add(new ProductVariant
+        {
+            ProductId = productId,
+            Label = label,
+            Price = price
+        });
 
-            await DbContext.SaveChangesAsync();
+        await DbContext.SaveChangesAsync();
 
-            newVariant = new ProductVariant();
-            variantMessage = $"Saved {label} at ${price:0.00}.";
+        newVariant = new ProductVariant();
+        variantMessage = $"Saved {label} at ${price:0.00}.";
+    }
+
+    // Rebecca - Added this for "are you sure" popup for prouduct deletion.
+    private async Task ConfirmDelete(int id, string productName)
+    {
+        bool confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Are you sure you want to delete \"{productName}\"? This action cannot be undone."
+        );
+
+        if (confirmed)
+        {
+            await DeleteProduct(id);
+        }
     }
 
 }
