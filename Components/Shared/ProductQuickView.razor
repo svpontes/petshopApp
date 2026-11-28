@@ -88,7 +88,7 @@
                     <div class="d-flex gap-2 flex-wrap">
                         @if (HasVariants)
                         {
-                            @foreach (var variant in product.Variants.OrderBy(v => GetWeightInPounds(v.Label)))
+                            @foreach (var variant in OrderedVariants)
                             {
                                 <button type="button"
                                         class="btn btn-sm @(selectedVariant?.Id == variant.Id ? "btn-dark" : "btn-outline-dark")"
@@ -100,7 +100,7 @@
                         }
                         else
                         {
-                            @foreach (var size in product.AvailableSizes)
+                            @foreach(var size in OrderedSizes)
                             {
                                 <button type="button"
                                         class="btn btn-sm @(selectedSize == size ? "btn-dark" : "btn-outline-dark")"
@@ -215,24 +215,40 @@
         var option = selectedVariant?.Label ?? (HasSizes ? selectedSize : "");
         CartService.AddToCart(product, option, qty, selectedVariant);
         await Close();
-    }
-    private static decimal GetWeightInPounds(string label)
+    }private static decimal GetWeightInPounds(string? label)
     {
-    var text = label.Trim();
+        // Accept labels such as "2.2 lb" and "2.2lb".
+        var text = label?.Trim() ?? "";
 
-    if (text.EndsWith(" lb", StringComparison.OrdinalIgnoreCase) &&
-        decimal.TryParse(
-            text[..^3].Trim(),
-            System.Globalization.NumberStyles.AllowDecimalPoint,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out var weight))
-    {
-        return weight;
+        if (!text.EndsWith("lb", StringComparison.OrdinalIgnoreCase))
+            return decimal.MaxValue;
+
+        // Read the numeric weight independently of the computer's culture.
+        var numericText = text[..^2].Trim();
+
+        if (decimal.TryParse(
+                numericText,
+                System.Globalization.NumberStyles.AllowDecimalPoint,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var weight) && weight > 0)
+        {
+            return weight;
+        }
+
+        // Place unrecognized options after valid weights.
+        return decimal.MaxValue;
     }
-
-    return decimal.MaxValue;
-    }
-
     private static string GetImageUrl(string? url) =>
         string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
+
+    // Sort weight variants numerically before rendering their buttons.
+    private IEnumerable<ProductVariant> OrderedVariants =>
+        (Product?.Variants ?? Enumerable.Empty<ProductVariant>())
+            .OrderBy(variant => GetWeightInPounds(variant.Label))
+            .ThenBy(variant => variant.Id);
+
+    // Apply the same ordering to size-only products.
+    private IEnumerable<string> OrderedSizes =>
+        (Product?.AvailableSizes ?? Enumerable.Empty<string>())
+            .OrderBy(GetWeightInPounds);
 }
