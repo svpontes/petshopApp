@@ -45,7 +45,8 @@ namespace PetShopApp.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
+            // Apply explicit order ownership and history mappings.
+            modelBuilder.ApplyConfiguration(new OrderConfiguration());
             // Reject negative inventory even when writes do not originate in the UI.
             modelBuilder.Entity<Product>().ToTable("Products", table =>
                 table.HasCheckConstraint("CK_Products_StockQuantity", "\"StockQuantity\" >= 0"));

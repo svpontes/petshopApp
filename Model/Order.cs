@@ -1,73 +1,60 @@
-using System.Text.Json;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
-namespace PetShopApp.Models
+namespace PetShopApp.Models;
+
+/// <summary>
+/// Represents one persisted order aggregate with customer details and purchase-time item snapshots.
+/// JSON storage is the existing application design, not a limitation of SQLite relationships.
+/// </summary>
+public class Order
 {
-    /// <summary>
-    /// Represents a completed customer order, storing transaction details, 
-    /// shipping info, and a serialized snapshot of purchased items.
-    /// </summary>
-    public class Order
+    private static readonly JsonSerializerOptions SnapshotReadOptions = new()
     {
-        // Unique identifier for the Order (Primary Key)
-        public int Id { get; set; }
+        PropertyNameCaseInsensitive = true
+    };
 
-        // References the signed-in customer (existing nullable SQLite column).
-        public int? UserId { get; set; }
+    // SQLite generates the order ID only when the aggregate is saved.
+    public int Id { get; set; }
 
-        // Timestamp of when the order was successfully placed
-        public DateTime OrderDate { get; set; } = DateTime.Now;
+    // Nullable for legacy unassociated orders; the checkout service requires an authenticated owner.
+    public int? UserId { get; set; }
 
-        // Total monetary value of the transaction
-        public decimal TotalAmount { get; set; }
+    // New orders use UTC. Migrations do not reinterpret timestamps already stored in the database.
+    public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+    public decimal TotalAmount { get; set; }
+    public string Status { get; set; } = "Processing";
 
-        // Current fulfillment status (e.g., "Processing", "Shipped", "Delivered")
-        public string Status { get; set; } = "Processing";
+    // Purchase-time customer data remains independent of subsequent profile edits.
+    public string CustomerName { get; set; } = "";
+    public string CustomerEmail { get; set; } = "";
+    public string ShippingAddress { get; set; } = "";
 
-        // Customer contact information for shipping and communication
-        public string CustomerName { get; set; } = string.Empty;
-        public string CustomerEmail { get; set; } = string.Empty;
-        public string ShippingAddress { get; set; } = string.Empty;
+    // Keep the raw persisted snapshot so status changes and migrations do not reserialize history.
+    public string SerializedItems { get; set; } = "";
 
-        /// <summary>
-        /// Stores the collection of purchased items as a JSON string.
-        /// This approach bypasses SQLite's limitation regarding nested collections 
-        /// by persisting the items as a single text block.
-        /// </summary>
-        public string SerializedItems { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Helper property for the UI and Business Logic.
-        /// It handles the serialization and deserialization of OrderItems on the fly.
-        /// [NotMapped] tells Entity Framework Core to ignore this property in the database schema.
-        /// </summary>
-        [NotMapped]
-        public List<OrderItem> OrderItems 
-        { 
-            get 
+    /// <summary>
+    /// Reads item snapshots without querying the current catalog.
+    /// Each getter returns a detached list; assign a completed list to persist a changed snapshot.
+    /// </summary>
+    [NotMapped]
+    public List<OrderItem> OrderItems
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(SerializedItems))
+                return new List<OrderItem>();
+            try
             {
-                // Returns an empty list if there is no data to deserialize
-                if (string.IsNullOrWhiteSpace(SerializedItems)) return new List<OrderItem>();
-                
-                try 
-                {
-                    // Deserializes the JSON string into a C# List.
-                    // PropertyNameCaseInsensitive ensures compatibility regardless of JSON casing.
-                    return JsonSerializer.Deserialize<List<OrderItem>>(SerializedItems, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<OrderItem>();
-                }
-                catch 
-                { 
-                    // Fail-safe: returns an empty list if the JSON is malformed
-                    return new List<OrderItem>(); 
-                }
+                return JsonSerializer.Deserialize<List<OrderItem>>(SerializedItems, SnapshotReadOptions)
+                    ?? new List<OrderItem>();
             }
-            
-            set 
+            catch (JsonException)
             {
-                // Converts the List back into a JSON string for database storage
-                SerializedItems = JsonSerializer.Serialize(value);
+                // Preserve unreadable legacy payloads in SerializedItems for a separate data review.
+                return new List<OrderItem>();
             }
         }
+        set => SerializedItems = JsonSerializer.Serialize(value);
     }
 }
