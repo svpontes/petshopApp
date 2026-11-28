@@ -1,5 +1,14 @@
 # Model
 
+## Current order models
+
+`Order` is the persisted aggregate; `OrderItem` is a purchase-time JSON value object,
+not a separate EF entity or a live product relationship. Account deletion cannot
+clear owner IDs on tracked orders. Existing timestamps and raw snapshots are preserved;
+new order defaults use UTC. See the
+[order persistence guide](../docs/data/order-persistence.md) for the explicit mapping,
+delete policy and migration checks. The reference notes below remain for context.
+
 This folder defines the application's data structures. 
 
 ## Files and responsibilities

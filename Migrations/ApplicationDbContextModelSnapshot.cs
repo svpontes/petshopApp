@@ -289,9 +289,11 @@ namespace PetShopApp.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "OrderDate", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("IX_Orders_UserId_OrderDate_Id");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("PetShopApp.Models.Product", b =>
@@ -570,7 +572,8 @@ namespace PetShopApp.Migrations
                 {
                     b.HasOne("PetShopApp.Models.User", null)
                         .WithMany("OrderHistory")
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
                 });
 
             modelBuilder.Entity("PetShopApp.Models.Product", b =>

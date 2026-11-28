@@ -1,5 +1,13 @@
 # Data
 
+## Current order persistence
+
+`OrderConfiguration.cs` explicitly maps the existing order aggregate, required columns,
+noncascading account ownership and the chronological history index. Purchased items
+remain JSON snapshots in `Orders.SerializedItems`. See the
+[order persistence and migration guide](../docs/data/order-persistence.md).
+The reference-design sections below describe the initial project baseline.
+
 This folder contains database access configuration and initialization code for PetShopApp.
 
 ## ApplicationDbContext.cs
