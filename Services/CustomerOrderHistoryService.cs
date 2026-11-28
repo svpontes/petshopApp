@@ -19,7 +19,10 @@ public sealed class CustomerOrderHistoryService
 
     public async Task<List<Order>> GetMyOrdersAsync()
     {
-        var customer = _authService.CurrentUser;
+        // Enforce account authorization inside the service as well as the UI.
+        if (!await _authService.IsAuthorizedAsync())
+            throw new UnauthorizedAccessException("Please sign in again.");
+            var customer = _authService.CurrentUser;
 
         if (customer is null)
             throw new InvalidOperationException("Sign in to view your orders.");

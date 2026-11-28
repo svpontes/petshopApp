@@ -90,6 +90,12 @@
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
+        // Recheck administrator access immediately before this operation.
+        if (!await Auth.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         // 1. SECURITY AUDIT: Verify Admin role before proceeding
         if (!Auth.IsAdmin)
         {

@@ -124,6 +124,13 @@
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
+
+        // Recheck administrator access immediately before this operation.
+        if (!await Auth.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         // 1. High-Priority Security Check
         if (!Auth.IsAdmin)
         {

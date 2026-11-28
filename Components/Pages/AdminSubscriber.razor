@@ -115,6 +115,12 @@
     /// </summary>
     private async Task LoadSubscribers()
     {
+        // Recheck administrator access immediately before this operation.
+        if (!await Auth.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         subscribers = await DbContext.Subscribers
             .OrderByDescending(s => s.SubscribedAt)
             .ToListAsync();
@@ -127,6 +133,12 @@
     /// <param name="id">The Primary Key of the subscriber record.</param>
     private async Task DeleteSubscriber(int id)
     {
+        // Recheck administrator access immediately before this operation.
+        if (!await Auth.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         var sub = await DbContext.Subscribers.FindAsync(id);
         if (sub != null)
         {

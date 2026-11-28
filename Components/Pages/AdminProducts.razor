@@ -261,6 +261,13 @@
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
+
+          // Recheck administrator access immediately before this operation.
+        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         if (!AuthService.IsAdmin)
         {
             NavManager.NavigateTo("/");
@@ -278,6 +285,12 @@
 
     private async Task LoadProducts()
     {
+        // Recheck administrator access immediately before this operation.
+        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         products = await DbContext.Products.OrderBy(p => p.Name).ToListAsync();
     }
 
@@ -316,6 +329,12 @@
     /// </summary>
     private async Task SaveProduct()
     {
+        // Recheck administrator access immediately before this operation.
+        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         productError = "";
 
         if (!animalTypes.Any(animal => animal.Id == editingProduct.AnimalTypeId))
@@ -370,6 +389,12 @@
 
     private async Task DeleteProduct(int id)
     {
+        // Recheck administrator access immediately before this operation.
+        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
+        {
+            NavManager.NavigateTo("/");
+            return;
+        }
         var product = await DbContext.Products.FindAsync(id);
         if (product == null) return;
 
@@ -395,6 +420,12 @@
 
     private async Task AddVariantAsync()
         {
+            // Recheck administrator access immediately before this operation.
+            if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
+            {
+            NavManager.NavigateTo("/");
+            return;
+        }
             variantMessage = "";
 
             if (!AuthService.IsAdmin || editingProduct.Id <= 0)
