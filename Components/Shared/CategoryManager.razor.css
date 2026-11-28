@@ -1,0 +1,36 @@
+/* Keep category controls consistent with the existing black-and-white inventory cards. */
+.category-manager .category-actions {
+    min-width: 180px;
+}
+
+/* The native dialog remains centered without depending on a Bootstrap JavaScript instance. */
+.category-delete-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    padding: 0;
+    border: 1px solid #ddd;
+    border-radius: 0;
+    background: #fff;
+    color: #212529;
+    box-shadow: 0 12px 48px rgb(0 0 0 / 25%);
+}
+
+.category-delete-dialog::backdrop {
+    background: rgb(0 0 0 / 50%);
+}
+
+.category-delete-dialog .dialog-content {
+    padding: 24px;
+}
+
+.category-delete-dialog .dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
