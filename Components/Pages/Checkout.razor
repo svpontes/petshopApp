@@ -44,6 +44,7 @@
                     {
                         <div class="alert alert-danger" role="alert">
                             @errorMessage
+                            <a href="/cart" class="d-block mt-2">Review your bag</a>
                         </div>
                     }
 
@@ -250,6 +251,11 @@
 
             CartService.ClearCart();
             NavManager.NavigateTo($"/order-success/{savedOrderId}");
+        }
+        catch (StockUnavailableException ex)
+        {
+            // Keep form values and cart selections so the customer can correct the quantity.
+            errorMessage = ex.Message;
         }
         catch (ArgumentException ex)
         {

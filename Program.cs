@@ -90,6 +90,9 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 // Retain the existing application services during the authentication transition.
 builder.Services.AddScoped<ProductService>();
+builder.Services.AddScoped<ProductService>();
+// Register authorized product administration operations.
+builder.Services.AddScoped<ProductAdministrationService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<OrderService>();

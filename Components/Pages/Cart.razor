@@ -3,6 +3,8 @@
 @implements IDisposable
 @using PetShopApp.Services
 @inject CartService CartService
+@inject ProductService ProductService
+@inject ILogger<Cart> Logger
 @inject NavigationManager NavManager
 
 @* --- SHOPPING CART COMPONENT ---
@@ -17,6 +19,15 @@
     <h2 class="fw-bold mb-4 text-uppercase text-center" style="letter-spacing: 2px;">
         Your Shopping Bag
     </h2>
+
+    @if (!string.IsNullOrEmpty(CartService.LastError))
+    {
+        <div class="alert alert-warning rounded-0" role="alert">@CartService.LastError</div>
+    }
+    @if (!string.IsNullOrEmpty(stockError))
+    {
+        <div class="alert alert-warning rounded-0" role="alert">@stockError</div>
+    }
 
     @if (CartService.CartItems.Any())
     {
@@ -59,6 +70,10 @@
                                     Unit price: @item.UnitPrice.ToString("C")
                                 </p>
 
+                                @if (ProductStock.Quantity(item.Product, item.Size) == 0)
+                                {
+                                    <p class="text-danger small fw-bold">OUT OF STOCK — remove this item before checkout.</p>
+                                }
                                 <p class="fw-bold">
                                     Subtotal: @((item.UnitPrice * item.Quantity).ToString("C"))
                                 </p>
@@ -82,6 +97,7 @@
                                     <button type="button"
                                             class="btn btn-sm p-1"
                                             aria-label="Increase quantity"
+                                            disabled="@(isChecking || CartService.RemainingQuantity(item.Product, item.Size) <= 0)"
                                             @onclick="() => UpdateQty(item, 1)">
                                         +
                                     </button>
@@ -162,17 +178,41 @@
 </div>
 
 @code {
+    private bool isChecking;
+    private string stockError = "";
     /// <summary>
     /// Updates the quantity of a cart item.
     /// Change can be +1 or -1.
     /// </summary>
-    private void UpdateQty(CartItem item, int change)
+    private async Task UpdateQty(CartItem item, int change)
     {
-        CartService.UpdateQuantity(
+        if (isChecking) return;
+        stockError = "";
+        isChecking = true;
+        try
+        {
+            if (change > 0)
+            {
+                var current = await ProductService.GetProductByIdAsync(item.Product.Id);
+                if (current is null)
+                {
+                    stockError = "This product is no longer available. Please remove it from your bag.";
+                    return;
+                }
+                CartService.RefreshProduct(current);
+            }
+            CartService.UpdateQuantity(
             item.Product.Id,
             item.Size,
             change
-        );
+            );
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Cart inventory check failed.");
+            stockError = "We couldn't check availability. Please try again.";
+        }
+        finally { isChecking = false; }
     }
 
     /// <summary>
@@ -189,9 +229,23 @@
     /// <summary>
     /// Subscribes to cart changes to update the UI.
     /// </summary>
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         CartService.OnChange += StateHasChanged;
+        try
+        {
+            foreach (var id in CartService.CartItems.Select(item => item.Product.Id).Distinct().ToArray())
+            {
+                var product = await ProductService.GetProductByIdAsync(id);
+                if (product is not null) CartService.RefreshProduct(product);
+                else stockError = "A product in your bag is no longer available. Please remove it.";
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Cart inventory could not be refreshed.");
+            stockError = "We couldn't refresh availability. It will be checked again at checkout.";
+        }
     }
 
     /// <summary>

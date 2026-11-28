@@ -46,6 +46,18 @@ namespace PetShopApp.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Reject negative inventory even when writes do not originate in the UI.
+            modelBuilder.Entity<Product>().ToTable("Products", table =>
+                table.HasCheckConstraint("CK_Products_StockQuantity", "\"StockQuantity\" >= 0"));
+            modelBuilder.Entity<ProductVariant>().ToTable("ProductVariants", table =>
+                table.HasCheckConstraint("CK_ProductVariants_StockQuantity", "\"StockQuantity\" >= 0"));
+
+            // Prevent a stale tracked administration update from overwriting a sale.
+            modelBuilder.Entity<Product>().Property(product => product.StockQuantity)
+                .IsConcurrencyToken();
+            modelBuilder.Entity<ProductVariant>().Property(variant => variant.StockQuantity)
+                .IsConcurrencyToken();
+
             // Preserve the existing account table and credential columns.
             modelBuilder.Entity<User>().ToTable("Users");
             modelBuilder.Entity<User>().Property(user => user.Email).IsRequired();

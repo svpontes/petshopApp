@@ -1,157 +1,114 @@
 @using PetShopApp.Models
-@inject PetShopApp.Services.CartService CartService
+@using PetShopApp.Services
+@inject CartService CartService
+@inject ProductService ProductService
+@inject ILogger<ProductQuickView> Logger
 
-<div class="offcanvas offcanvas-end @(Show ? "show" : "")"
-     tabindex="-1"
+@* Load current inventory when the panel opens; cart selections never reserve stock. *@
+<div class="offcanvas offcanvas-end @(Show ? "show" : "")" tabindex="-1"
      aria-labelledby="quick-add-title"
      style="visibility: @(Show ? "visible" : "hidden"); width: min(450px, 100vw); border-left: 1px solid #ddd;">
-
     <div class="offcanvas-header border-bottom">
-        <h5 class="fw-bold text-uppercase mb-0">
-            Quick Add
-        </h5>
+        <h5 id="quick-add-title" class="fw-bold text-uppercase mb-0">Quick Add</h5>
         <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
     </div>
-
     <div class="offcanvas-body">
-        @if (Product is { } product)
+        @if (isLoading)
         {
-            
-            var secondaryImages = product.SecondaryImageUrls?
-                .Where(url => !string.IsNullOrWhiteSpace(url))
-                .ToArray() ?? Array.Empty<string>();
-
-            var carouselId = $"quick-add-carousel-{product.Id}";
-        
-
-        if (secondaryImages.Length == 0)
-        {
-            <img src="@GetImageUrl(product.ImageUrl)"
-                alt="@product.Name"
-                class="img-fluid d-block mx-auto" />
+            <p role="status">Loading product...</p>
         }
-        else
+        @if (!string.IsNullOrEmpty(stockError))
         {
-            <div id="@carouselId" class="carousel slide quick-add-carousel">
-                <div class="carousel-inner">
-                    <div class="carousel-item active">
-                        <img src="@GetImageUrl(product.ImageUrl)"
-                            alt="@product.Name"
-                            class="d-block w-100" />
-                    </div>
-
-                    @foreach (var url in secondaryImages)
-                    {
-                        <div class="carousel-item">
-                            <img src="@GetImageUrl(url)"
-                                alt="@product.Name"
-                                class="d-block w-100" />
-                        </div>
-                    }
-                </div>
-
-                <button class="carousel-control-prev" type="button"
-                        data-bs-target="@($"#{carouselId}")" data-bs-slide="prev">
-                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Previous image</span>
-                </button>
-
-                <button class="carousel-control-next" type="button"
-                        data-bs-target="@($"#{carouselId}")" data-bs-slide="next">
-                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                    <span class="visually-hidden">Next image</span>
-                </button>
-            </div>
+            <div class="alert alert-danger rounded-0" role="alert">@stockError</div>
+        }
+        @if (currentProduct is { } product)
+        {
+            var secondaryImages = product.SecondaryImageUrls.ToArray();
+            var carouselId = $"quick-add-carousel-{product.Id}";
+            if (secondaryImages.Length == 0)
+            {
+                <img src="@GetImageUrl(product.ImageUrl)" alt="@product.Name" class="img-fluid d-block mx-auto" />
             }
-                  
-
-            <h4 class="fw-bold text-uppercase mt-3">@product.Name</h4>
-
-                @if (!string.IsNullOrWhiteSpace(product.Description))
-                    {
-                        <p class="small text-muted mb-2">@product.Description</p>
-                }
-
-                <div class="mb-3">
-                <PromotionPrice RegularUnitPrice="@RegularUnitPrice" />
+            else
+            {
+                <div id="@carouselId" class="carousel slide quick-add-carousel">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            <img src="@GetImageUrl(product.ImageUrl)" alt="@product.Name" class="d-block w-100" />
+                        </div>
+                        @foreach (var url in secondaryImages)
+                        {
+                            <div class="carousel-item"><img src="@GetImageUrl(url)" alt="@product.Name" class="d-block w-100" /></div>
+                        }
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="@($"#{carouselId}")" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span><span class="visually-hidden">Previous image</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="@($"#{carouselId}")" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span><span class="visually-hidden">Next image</span>
+                    </button>
                 </div>
-
+            }
+            <h4 class="fw-bold text-uppercase mt-3">@product.Name</h4>
+            @if (!string.IsNullOrWhiteSpace(product.Description))
+            {
+                <p class="small text-muted mb-2">@product.Description</p>
+            }
+            <div class="mb-3"><PromotionPrice RegularUnitPrice="RegularUnitPrice" /></div>
             <hr />
-
-            @if (HasVariants || HasSizes)
+            @if (HasVariants || product.AvailableSizes.Count > 0)
             {
                 <div class="mb-4">
-                    <div class="fw-bold small text-uppercase mb-2">
-                        @(HasVariants ? "Select an option:" : "Select size:")
-                    </div>
-
+                    <div class="fw-bold small text-uppercase mb-2">@(HasVariants ? "Select an option:" : "Select size:")</div>
                     <div class="d-flex gap-2 flex-wrap">
                         @if (HasVariants)
                         {
                             @foreach (var variant in OrderedVariants)
                             {
-                                <button type="button"
+                                <button type="button" disabled="@(variant.StockQuantity <= 0 || isAdding)"
                                         class="btn btn-sm @(selectedVariant?.Id == variant.Id ? "btn-dark" : "btn-outline-dark")"
                                         aria-pressed="@(selectedVariant?.Id == variant.Id ? "true" : "false")"
-                                        @onclick="() => { selectedVariant = variant; showWarning = false; }">
-                                    @variant.Label
+                                        @onclick="() => SelectVariant(variant)">
+                                    @variant.Label @(variant.StockQuantity <= 0 ? "— OUT OF STOCK" : "")
                                 </button>
                             }
                         }
                         else
                         {
-                            @foreach(var size in OrderedSizes)
+                            @foreach (var size in product.AvailableSizes.OrderBy(GetWeightInPounds))
                             {
-                                <button type="button"
-                                        class="btn btn-sm @(selectedSize == size ? "btn-dark" : "btn-outline-dark")"
-                                        aria-pressed="@(selectedSize == size ? "true" : "false")"
-                                        @onclick="() => { selectedSize = size; showWarning = false; }">
-                                    @size
-                                </button>
+                                <button type="button" class="btn btn-sm @(selectedSize == size ? "btn-dark" : "btn-outline-dark")"
+                                        disabled="@isAdding" @onclick="() => SelectSize(size)">@size</button>
                             }
                         }
                     </div>
-
-                    @if (showWarning)
-                    {
-                        <small class="text-danger d-block mt-1" role="alert">
-                            @(HasVariants ? "Please select an option." : "Please select a size.")
-                        </small>
-                    }
                 </div>
             }
-
+            @* Stock comes from the database; the remaining allowance also counts this cart. *@
+            <p class="small fw-bold @(StockQuantity == 0 ? "text-danger" : "text-secondary")" role="status">
+                @(StockQuantity == 0 ? "OUT OF STOCK" : $"{StockQuantity} unit(s) in stock")
+            </p>
+            @if (StockQuantity > 0 && Remaining == 0)
+            {
+                <p class="small text-muted">All available units are already in your bag.</p>
+            }
             <div class="mb-4">
-                <label for="quick-add-quantity" class="fw-bold small text-uppercase mb-2">
-                    Quantity:
-                </label>
+                <label for="quick-add-quantity" class="fw-bold small text-uppercase mb-2">Quantity:</label>
                 <div class="input-group" style="width: 120px;">
-                    <button type="button"
-                            class="btn btn-outline-dark btn-sm"
-                            aria-label="Decrease quantity"
-                            disabled="@(qty <= 1)"
-                            @onclick="() => { if (qty > 1) qty--; }">−</button>
-                    <input id="quick-add-quantity"
-                           type="text"
-                           class="form-control form-control-sm text-center border-dark"
-                           value="@qty"
-                           readonly />
-                    <button type="button"
-                            class="btn btn-outline-dark btn-sm"
-                            aria-label="Increase quantity"
-                            @onclick="() => qty++">+</button>
+                    <button type="button" class="btn btn-outline-dark btn-sm" aria-label="Decrease quantity"
+                            disabled="@(qty <= 1 || isAdding)" @onclick="() => qty--">−</button>
+                    <input id="quick-add-quantity" class="form-control form-control-sm text-center border-dark" value="@qty" readonly />
+                    <button type="button" class="btn btn-outline-dark btn-sm" aria-label="Increase quantity"
+                            disabled="@(qty >= Remaining || isAdding)" @onclick="() => qty++">+</button>
                 </div>
             </div>
-
-            <button type="button"
-                    class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 shadow-sm"
-                    @onclick="HandleAdd">
-                Add to Bag — @((UnitPrice * qty).ToString("C"))
+            <button type="button" class="btn btn-dark w-100 py-3 fw-bold text-uppercase rounded-0 shadow-sm"
+                    disabled="@(Remaining == 0 || isAdding)" @onclick="HandleAdd">
+                @(StockQuantity == 0 ? "OUT OF STOCK" : Remaining == 0 ? "QUANTITY LIMIT REACHED" : isAdding ? "ADDING..." : $"Add to Bag — {(UnitPrice * qty):C}")
             </button>
         }
     </div>
 </div>
-
 @if (Show)
 {
     <div class="offcanvas-backdrop fade show" @onclick="Close"></div>
@@ -162,93 +119,97 @@
     [Parameter] public Product? Product { get; set; }
     [Parameter] public ProductVariant? InitialVariant { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
-
+    [Parameter] public EventCallback<Product> OnAvailabilityChanged { get; set; }
+    private Product? currentProduct;
     private ProductVariant? selectedVariant;
     private string selectedSize = "";
+    private string stockError = "";
     private int qty = 1;
-    private bool showWarning;
+    private bool isLoading = true;
+    private bool isAdding;
+    private bool HasVariants => currentProduct?.Variants.Count > 0;
+    private string SelectedOption => selectedVariant?.Label ?? selectedSize;
+    private int StockQuantity => currentProduct is { } product ? ProductStock.Quantity(product, HasVariants ? SelectedOption : null) : 0;
+    private int Remaining => currentProduct is { } product ? CartService.RemainingQuantity(product, HasVariants ? SelectedOption : null) : 0;
+    private decimal RegularUnitPrice => selectedVariant?.Price ?? currentProduct?.Price ?? 0m;
+    private decimal UnitPrice => StorePromotion.GetSaleUnitPrice(RegularUnitPrice);
+    private IEnumerable<ProductVariant> OrderedVariants => (currentProduct?.Variants ?? Enumerable.Empty<ProductVariant>())
+        .OrderBy(variant => GetWeightInPounds(variant.Label)).ThenBy(variant => variant.Id);
 
-    private bool HasVariants => Product?.Variants.Any() == true;
-    private bool HasSizes => Product?.AvailableSizes.Any() == true;
-    private decimal RegularUnitPrice =>
-    selectedVariant?.Price ?? Product?.Price ?? 0m;
-
-    private decimal UnitPrice =>
-    PetShopApp.Services.StorePromotion.GetSaleUnitPrice(RegularUnitPrice);
-
-    protected override void OnInitialized()
+    /// <summary>Reads a fresh detached product instead of trusting an old card snapshot.</summary>
+    protected override async Task OnInitializedAsync()
     {
-        if (Product is not { } product)
-        return;
-
-        selectedVariant = product.Variants
-        .FirstOrDefault(v => v.Id == InitialVariant?.Id)
-        ?? product.Variants.FirstOrDefault(v => GetWeightInPounds(v.Label) == 2.2m);
+        try
+        {
+            currentProduct = Product is null ? null : await ProductService.GetProductByIdAsync(Product.Id);
+            if (currentProduct is null)
+            {
+                stockError = "This product is no longer available.";
+                return;
+            }
+            selectedVariant = OrderedVariants.FirstOrDefault(variant => variant.Id == InitialVariant?.Id && variant.StockQuantity > 0)
+                ?? OrderedVariants.FirstOrDefault(variant => variant.StockQuantity > 0)
+                ?? OrderedVariants.FirstOrDefault();
+            CartService.RefreshProduct(currentProduct);
+            await OnAvailabilityChanged.InvokeAsync(currentProduct);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Quick Add inventory could not be loaded.");
+            stockError = "We couldn't load this product. Please close the panel and try again.";
+        }
+        finally { isLoading = false; }
     }
 
-    private Task Close()
-    {
-        selectedVariant = null;
-        selectedSize = "";
-        qty = 1;
-        showWarning = false;
-        return OnClose.InvokeAsync();
-    }
+    // A selection change resets the requested quantity without changing inventory.
+    private void SelectVariant(ProductVariant variant) { selectedVariant = variant; qty = 1; stockError = ""; }
+    private void SelectSize(string size) { selectedSize = size; qty = 1; stockError = ""; }
+    private Task Close() => isAdding ? Task.CompletedTask : OnClose.InvokeAsync();
 
+    /// <summary>Checks current stock again before adding and reports failures without closing.</summary>
     private async Task HandleAdd()
     {
-        if (Product is not { } product)
+        if (isAdding || currentProduct is null)
             return;
-
-        if (HasVariants && selectedVariant is null)
+        if ((!HasVariants && currentProduct.AvailableSizes.Count > 0 &&
+             !currentProduct.AvailableSizes.Contains(selectedSize)) || (HasVariants && selectedVariant is null))
         {
-            showWarning = true;
-            return;
-        }
-
-        if (!HasVariants && HasSizes && !product.AvailableSizes.Contains(selectedSize))
-        {
-            showWarning = true;
+            stockError = HasVariants ? "Please select an option." : "Please select a size.";
             return;
         }
-
-        var option = selectedVariant?.Label ?? (HasSizes ? selectedSize : "");
-        CartService.AddToCart(product, option, qty, selectedVariant);
-        await Close();
-    }private static decimal GetWeightInPounds(string? label)
-    {
-        // Accept labels such as "2.2 lb" and "2.2lb".
-        var text = label?.Trim() ?? "";
-
-        if (!text.EndsWith("lb", StringComparison.OrdinalIgnoreCase))
-            return decimal.MaxValue;
-
-        // Read the numeric weight independently of the computer's culture.
-        var numericText = text[..^2].Trim();
-
-        if (decimal.TryParse(
-                numericText,
-                System.Globalization.NumberStyles.AllowDecimalPoint,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var weight) && weight > 0)
+        isAdding = true;
+        stockError = "";
+        var added = false;
+        try
         {
-            return weight;
+            var option = SelectedOption;
+            currentProduct = await ProductService.GetProductByIdAsync(currentProduct.Id);
+            if (currentProduct is null)
+            {
+                stockError = "This product is no longer available.";
+                return;
+            }
+            selectedVariant = currentProduct.Variants.FirstOrDefault(variant => variant.Label == option);
+            await OnAvailabilityChanged.InvokeAsync(currentProduct);
+            added = CartService.AddToCart(currentProduct, option, qty, selectedVariant);
+            if (!added) stockError = CartService.LastError;
         }
-
-        // Place unrecognized options after valid weights.
-        return decimal.MaxValue;
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Quick Add inventory check failed.");
+            stockError = "We couldn't check availability. Please try again.";
+        }
+        finally { isAdding = false; }
+        if (added) await OnClose.InvokeAsync();
     }
-    private static string GetImageUrl(string? url) =>
-        string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
 
-    // Sort weight variants numerically before rendering their buttons.
-    private IEnumerable<ProductVariant> OrderedVariants =>
-        (Product?.Variants ?? Enumerable.Empty<ProductVariant>())
-            .OrderBy(variant => GetWeightInPounds(variant.Label))
-            .ThenBy(variant => variant.Id);
-
-    // Apply the same ordering to size-only products.
-    private IEnumerable<string> OrderedSizes =>
-        (Product?.AvailableSizes ?? Enumerable.Empty<string>())
-            .OrderBy(GetWeightInPounds);
+    // Keep decimal weights in numeric order independently of the browser's culture.
+    private static decimal GetWeightInPounds(string? label)
+    {
+        var text = label?.Trim() ?? "";
+        return text.EndsWith("lb", StringComparison.OrdinalIgnoreCase) && decimal.TryParse(text[..^2].Trim(),
+            System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture,
+            out var weight) && weight > 0 ? weight : decimal.MaxValue;
+    }
+    private static string GetImageUrl(string? url) => string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
 }

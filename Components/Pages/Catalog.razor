@@ -1,5 +1,6 @@
 @page "/catalog"
 @using PetShopApp.Models
+@using PetShopApp.Services
 @using PetShopApp.Components
 @using PetShopApp.Components.Shared
 @inject PetShopApp.Services.ProductService ProductService
@@ -112,14 +113,34 @@
 
                                             <button type="button"
                                                     class="btn btn-sm @(isSelected ? "btn-dark" : "btn-outline-dark")"
+                                                    disabled="@(variant.StockQuantity <= 0)"
                                                     aria-pressed="@(isSelected ? "true" : "false")"
                                                     @onclick="() => selectedVariants[product.Id] = variant">
-                                                @variant.Label
+                                                @variant.Label @(variant.StockQuantity <= 0 ? "— OUT OF STOCK" : "")
                                             </button>
                                         }
                                     </div>
                                 }
 
+                            @* Show same-price options when the product has no priced variants. *@
+                            @if (product.Variants.Count == 0 && product.AvailableSizes.Count > 0)
+                            {
+                                <div class="mb-3">
+                                    <div class="small fw-bold mb-2">Available options:</div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        @foreach (var size in product.AvailableSizes.OrderBy(GetWeightInPounds))
+                                        {
+                                            <span class="badge bg-light text-dark border rounded-0">@size</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @* Cards show physical availability; cart selections do not reserve stock. *@
+                            @if (ProductStock.IsSoldOut(product))
+                            {
+                                <p class="text-danger fw-bold small" role="status">OUT OF STOCK</p>
+                            }
                             @* --- ACTIONS AREA --- *@
                             <div class="d-flex justify-content-between align-items-center mt-auto">
                                 @{
@@ -131,8 +152,9 @@
 
                                 @* Triggers the Quick View panel instead of full navigation *@
                                 <button class="btn btn-dark rounded-0"
+                                    disabled="@ProductStock.IsSoldOut(product)"
                                     @onclick="() => OpenQuickView(product)">
-                                    ADD TO CART
+                                    @(ProductStock.IsSoldOut(product) ? "OUT OF STOCK" : "ADD TO CART")
                                 </button>
 
                             </div>
@@ -151,6 +173,7 @@
                       Show="true"
                       Product="selectedProduct"
                       InitialVariant="selectedVariants.GetValueOrDefault(selectedProduct.Id)"
+                      OnAvailabilityChanged="UpdateAvailability"
                       OnClose="HandleClose" />
 }
 
@@ -215,8 +238,8 @@
             {
                 // Prefer 2.2 lb; otherwise select the first available ordered variant.
                 var defaultVariant = product.Variants.FirstOrDefault(
-                    variant => GetWeightInPounds(variant.Label) == 2.2m)
-                    ?? product.Variants
+                    variant => variant.StockQuantity > 0 && GetWeightInPounds(variant.Label) == 2.2m)
+                    ?? product.Variants.Where(variant => variant.StockQuantity > 0)
                         .OrderBy(variant => GetWeightInPounds(variant.Label))
                         .ThenBy(variant => variant.Id)
                         .FirstOrDefault();
@@ -272,19 +295,19 @@
             ? "/images/placeholder.png"
             : url.Trim();
     }
-    private void AddFromCatalog(Product product)
+    /// <summary>Refreshes the card after Quick Add reads current database inventory.</summary>
+    private void UpdateAvailability(Product product)
     {
-    if (product.Variants.Count == 0)
-    {
-        OpenQuickView(product);
-        return;
+        var index = products.FindIndex(item => item.Id == product.Id);
+        if (index >= 0) products[index] = product;
+        var previousId = selectedVariants.GetValueOrDefault(product.Id)?.Id;
+        var selected = product.Variants.FirstOrDefault(variant => variant.Id == previousId && variant.StockQuantity > 0)
+            ?? product.Variants.Where(variant => variant.StockQuantity > 0)
+                .OrderBy(variant => GetWeightInPounds(variant.Label)).ThenBy(variant => variant.Id).FirstOrDefault();
+        if (selected is null) selectedVariants.Remove(product.Id);
+        else selectedVariants[product.Id] = selected;
     }
 
-    if (selectedVariants.TryGetValue(product.Id, out var variant))
-    {
-        CartService.AddToCart(product, variant.Label, 1, variant);
-    }
-    }
     private static decimal GetWeightInPounds(string? label)
     {
     // Accept labels such as "2.2 lb" and "2.2lb".
