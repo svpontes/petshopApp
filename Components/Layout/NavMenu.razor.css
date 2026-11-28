@@ -64,8 +64,111 @@
     font-weight: 600;
 }
 
+/* Keep the greeting and arrow inside the reserved account space. */
+.account-greeting-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 14px;
+    padding-right: 16px;
+}
+
+.account-greeting-row .account-greeting {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Display a white downward arrow beside the greeting. */
+.account-menu-caret {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+    transform: translateY(-50%);
+}
+
+/* Match the tall white panel in the design reference. */
 .account-dropdown-menu {
-    min-width: 150px;
+    min-width: 0;
+    width: min(210px, calc(100vw - 24px));
+    min-height: 380px;
+    padding: 24px;
+    border: 1px solid #eeeeee;
+    border-radius: 0;
+    background-color: #ffffff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
+    z-index: 1050;
+}
+
+/* Point the panel toward the greeting indicator. */
+.account-dropdown-menu::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 8px solid #ffffff;
+}
+
+/* Style links and buttons, including content inside AccountForm. */
+.account-dropdown-menu ::deep .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #333333;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.4;
+    text-align: left;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.account-dropdown-menu ::deep form {
+    margin: 0;
+}
+
+/* Use the store's red for the logout label and icon. */
+.account-dropdown-menu ::deep .account-logout {
+    color: var(--primary-color, #ed1c24);
+}
+
+.account-dropdown-menu ::deep .account-logout .bi {
+    flex-shrink: 0;
+    font-size: 16px;
+}
+
+/* Highlight pointer and keyboard interaction. */
+.account-dropdown-menu ::deep .dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.account-dropdown-menu ::deep .dropdown-item:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+    background-color: #f5f5f5;
+}
+
+/* Reduce panel height on smaller or shorter screens. */
+@media (max-width: 575.98px), (max-height: 600px) {
+    .account-dropdown-menu {
+        min-height: 180px;
+        padding: 16px;
+    }
 }
 
 /* Make keyboard focus visible against the red header. */

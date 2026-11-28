@@ -19,21 +19,25 @@
         <div class="card border-0 shadow-lg p-4 text-dark rounded-0">
             <h2 class="text-center fw-bold mb-4" style="letter-spacing: 3px;">JOIN US</h2>
 
-            <AccountForm Action="/account/register">
+            <AccountForm Action="/account/register"
+             ValidateBeforeSubmit="ValidateRegistration">
             @* User Input Fields with Two-Way Data Binding *@
             <div class="mb-3">
-                <label class="small fw-bold text-secondary">FULL NAME</label>
+                <label for="register-name"
+                    class="small fw-bold text-secondary">FULL NAME</label>
                 <input id="register-name" name="name" type="text" @bind="name" maxlength="100" autocomplete="name" required class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="Your Name" />
             </div>
 
             <div class="mb-3">
-                <label class="small fw-bold text-secondary">EMAIL</label>
+                <label for="register-email"
+                class="small fw-bold text-secondary">EMAIL</label>
                 <input id="register-email" name="email" type="email" @bind="email" autocomplete="email" required class="form-control bg-transparent border-secondary text-dark rounded-0 py-2" placeholder="email@example.com" />
             </div>
 
             @* --- PASSWORD FIELD WITH REAL-TIME VALIDATION --- *@
             <div class="mb-4">
-                <label class="small fw-bold text-secondary">PASSWORD</label>
+                <label for="register-password"
+                class="small fw-bold text-secondary">PASSWORD</label>
                 <input id="register-password" name="password" type="password" required
                        @bind="password"
                        @oninput="CheckPasswordStrength"
@@ -71,12 +75,44 @@
                     </ul>
                 </div>
             </div>
+            @*Require the same password twice before creating a account*@
+            <div class="mb-4">
+                    <label for="register-confirm-password"
+                        class="small fw-bold text-secondary">
+                        CONFIRM PASSWORD
+                    </label>
 
+                    <input id="register-confirm-password"
+                        name="confirmPassword"
+                        type="password"
+                        @bind="confirmPassword"
+                        @bind:event="oninput"
+                        required
+                        autocomplete="new-password"
+                        class="form-control bg-transparent border-secondary text-dark rounded-0 py-2"
+                        aria-describedby="register-confirm-password-help" />
+
+                    <small id="register-confirm-password-help"
+                        class="d-block mt-1"
+                        aria-live="polite">
+                        @if (!string.IsNullOrEmpty(confirmPassword) &&
+                            !string.Equals(password, confirmPassword, StringComparison.Ordinal))
+                        {
+                            <span class="text-danger">Passwords do not match.</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Enter the same password again.</span>
+                        }
+                    </small>
+            </div>
             @* Feedback for validation or database errors *@
             @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <div class="alert alert-danger bg-transparent border-danger text-danger small rounded-0 mb-3">
+                <div role="alert"
+                    class="alert alert-danger bg-transparent border-danger text-danger small rounded-0 mb-3">
                     @errorMessage
+
                 </div>
             }
 
@@ -91,23 +127,28 @@
         </div>
     </div>
 </div>
-
 @code {
     private string name = "";
     private string email = "";
     private string password = "";
-
+    // Keep local validation feedback separate from server feedback.
+    private string localErrorMessage = "";
+    // Keep confirmation separate from the password sent to Identity.
+    private string confirmPassword = "";
     [SupplyParameterFromQuery(Name = "error")]
     public string? Error { get; set; }
 
     // Display only predefined feedback; never render raw exception details.
-    private string errorMessage => Error switch
+    private string errorMessage => !string.IsNullOrEmpty(localErrorMessage)
+    ? localErrorMessage
+    : Error switch
     {
         "name" => "Please enter your full name using no more than 100 characters.",
         "email" => "Please enter a valid email address without spaces.",
         "duplicate" => "This email is already registered.",
         "password" => "Your password does not meet the security requirements.",
         "unavailable" => "We couldn't create your account. Please try again.",
+        "confirmation" => "Please enter the same password in both password fields.",
         _ => ""
     };
 
@@ -121,6 +162,55 @@
     private void CheckPasswordStrength(ChangeEventArgs e) =>
         password = e.Value?.ToString() ?? "";
 
+     /// <summary>
+/// Stops invalid password submissions without reloading or clearing the form.
+/// The HTTP endpoint and Identity still perform authoritative validation.
+/// </summary>
+private bool ValidateRegistration()
+{
+    // Identify the password requirements that still need attention.
+    var missingRequirements = new List<string>();
+
+    if (!hasMinLength)
+        missingRequirements.Add("at least 8 characters");
+
+    if (!hasUpperCase)
+        missingRequirements.Add("an uppercase letter");
+
+    if (!hasNumber)
+        missingRequirements.Add("a number");
+
+    if (!hasSpecialChar)
+        missingRequirements.Add(
+            "a special character other than whitespace");
+
+    var errors = new List<string>();
+
+    if (missingRequirements.Count > 0)
+    {
+        errors.Add(
+            "Your password must include " +
+            string.Join(", ", missingRequirements) + ".");
+    }
+
+    // Compare both passwords exactly, including capitalization and spaces.
+    if (string.IsNullOrEmpty(confirmPassword) ||
+        !string.Equals(
+            password,
+            confirmPassword,
+            StringComparison.Ordinal))
+    {
+        errors.Add(
+            "Password and confirmation must match exactly.");
+    }
+
+    // Replace stale feedback and refresh the page without navigating away.
+    Error = null;
+    localErrorMessage = string.Join(" ", errors);
+    StateHasChanged();
+
+    return errors.Count == 0;
+    }
     protected override void OnInitialized()
     {
         if (AuthService.IsLoggedIn)

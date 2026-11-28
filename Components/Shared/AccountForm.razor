@@ -15,6 +15,9 @@
 @code {
     [Parameter, EditorRequired] public string Action { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    // Let a page reject submission while keeping its current field values.
+    [Parameter]
+    public Func<bool>? ValidateBeforeSubmit { get; set; }
     private ElementReference form;
     private bool submitting;
     private string errorMessage = "";
@@ -24,8 +27,13 @@
         if (submitting)
             return;
 
-        submitting = true;
         errorMessage = "";
+
+        // Keep the current page and field values when validation fails.
+        if (ValidateBeforeSubmit is not null && !ValidateBeforeSubmit())
+            return;
+
+        submitting = true;
         try
         {
             // Clear account selections on logout and preserve guest selections on login.

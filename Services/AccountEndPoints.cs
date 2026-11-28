@@ -69,14 +69,20 @@ public static class AccountEndpoints
         var name = form["name"].ToString().Trim();
         var email = form["email"].ToString().Trim().ToLowerInvariant();
         var password = form["password"].ToString();
-
+        var confirmPassword = form["confirmPassword"].ToString();
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
-            return Results.LocalRedirect("/register?error=name");
+        return Results.LocalRedirect("/register?error=name");
         if (!IsValidEmail(email))
             return Results.LocalRedirect("/register?error=email");
+        // Compare exact values on the server before any account can be created.
+        // Passwords are case-sensitive and must never be trimmed or normalized.
+        if (string.IsNullOrEmpty(confirmPassword) ||
+            !string.Equals(password, confirmPassword, StringComparison.Ordinal))
+        {
+            return Results.LocalRedirect("/register?error=confirmation");
+        }
         if (await users.FindByEmailAsync(email) is not null)
             return Results.LocalRedirect("/register?error=duplicate");
-
         // Ignore role fields supplied by the browser; public accounts are customers.
         var user = new User
         {
