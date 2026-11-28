@@ -1,0 +1,301 @@
+@using System.ComponentModel.DataAnnotations
+@using PetShopApp.Services
+@implements IAsyncDisposable
+@inject CategoryAdministrationService CategoryAdministration
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
+@inject ILogger<CategoryManager> Logger
+
+@* Keep category management outside the product EditForm to avoid nested forms. *@
+<section id="product-categories" class="category-manager card rounded-0 mb-4 shadow-sm"
+         aria-labelledby="category-manager-title">
+    <div class="card-header bg-dark text-white">
+        <h3 id="category-manager-title" class="h6 mb-0 fw-bold text-uppercase">Product Categories</h3>
+    </div>
+    <div class="card-body">
+        @if (!string.IsNullOrEmpty(formError))
+        {
+            <div class="alert alert-danger rounded-0" role="alert">@formError</div>
+        }
+        @if (!string.IsNullOrEmpty(statusMessage))
+        {
+            <div class="alert alert-success rounded-0" role="status">@statusMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(loadError))
+        {
+            <div class="alert alert-warning rounded-0" role="alert">@loadError</div>
+        }
+        <fieldset disabled="@Unavailable" class="border-0 p-0 m-0" style="min-width: 0;">
+            <EditForm @key="form" Model="@form" OnValidSubmit="SaveCategoryAsync">
+                <DataAnnotationsValidator />
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-6">
+                        <label for="category-name" class="form-label fw-bold small">
+                            @(editingId is null ? "New category name" : "Rename category")
+                        </label>
+                        <InputText id="category-name" class="form-control rounded-0" maxlength="50"
+                                   @bind-Value="form.Name" />
+                        <ValidationMessage For="@(() => form.Name)" />
+                    </div>
+                    <div class="col-12 col-md-6 d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-dark rounded-0">
+                            @(isSaving ? "SAVING..." : editingId is null ? "Create category" : "Save name")
+                        </button>
+                        @if (editingId is not null)
+                        {
+                            <button type="button" class="btn btn-outline-dark rounded-0" @onclick="CancelEdit">Cancel</button>
+                        }
+                        <button type="button" class="btn btn-outline-dark rounded-0" @onclick="RefreshAsync">Refresh categories</button>
+                    </div>
+                </div>
+                <p class="small text-muted mt-2 mb-3">Names must be unique, ignoring capitalization and spaces at the beginning or end.</p>
+            </EditForm>
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead><tr><th>Name</th><th>Products</th><th class="category-actions">Actions</th></tr></thead>
+                    <tbody>
+                        @foreach (var category in categories)
+                        {
+                            <tr @key="category.Id">
+                                <td>@category.Name</td>
+                                <td>@category.ProductCount</td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-dark rounded-0"
+                                                @onclick="() => EditCategory(category)">Rename</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger rounded-0"
+                                                disabled="@(category.ProductCount > 0)"
+                                                title="@(category.ProductCount > 0 ? "Reassign linked products before deleting this category." : "Delete unused category")"
+                                                @onclick="() => RequestDeletion(category)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @if (categories.Count == 0 && !isLoading)
+                        {
+                            <tr><td colspan="3" class="text-muted text-center py-3">No categories found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+        @if (isLoading)
+        {
+            <p class="small text-muted mt-3 mb-0" role="status">Loading categories...</p>
+        }
+    </div>
+</section>
+
+@* A native modal traps keyboard focus and is styled to match the inventory page. *@
+<dialog @ref="deleteDialog" class="category-delete-dialog" aria-labelledby="category-delete-title"
+        aria-describedby="category-delete-description" @onkeydown="HandleDialogKeyAsync">
+    <div class="dialog-content">
+        <h3 id="category-delete-title" class="h5 fw-bold text-uppercase">Delete category?</h3>
+        <p id="category-delete-description" class="mb-2">Delete <strong>@pendingDeletion?.Name</strong>?</p>
+        <p class="small text-muted">Only an unused category can be deleted. This action cannot be undone.</p>
+        @if (!string.IsNullOrEmpty(deleteError))
+        {
+            <div class="alert alert-danger rounded-0" role="alert">@deleteError</div>
+        }
+        <div class="dialog-actions">
+            <button type="button" class="btn btn-outline-dark rounded-0" disabled="@isSaving"
+                    autofocus @onclick="CancelDeletionAsync">Cancel</button>
+            <button type="button" class="btn btn-danger rounded-0" disabled="@(isSaving || Disabled)"
+                    @onclick="ConfirmDeletionAsync">@(isSaving ? "DELETING..." : "Delete category")</button>
+        </div>
+    </div>
+</dialog>
+
+@code {
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<IReadOnlyList<CategoryInventoryItem>> OnChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnBusyChanged { get; set; }
+    private List<CategoryInventoryItem> categories = new();
+    private CategoryForm form = new();
+    private int? editingId;
+    private string originalName = "";
+    private string formError = "";
+    private string statusMessage = "";
+    private string loadError = "";
+    private string deleteError = "";
+    private CategoryInventoryItem? pendingDeletion;
+    private ElementReference deleteDialog;
+    private IJSObjectReference? dialogModule;
+    private bool showDialogAfterRender;
+    private bool isLoading;
+    private bool isSaving;
+    private bool disposed;
+    private bool Unavailable => Disabled || isLoading || isSaving;
+
+    /// <summary>Loads protected category data when the component is created.</summary>
+    protected override Task OnInitializedAsync() => RefreshAsync();
+
+    /// <summary>Refreshes counts after product changes without resetting a pending category edit.</summary>
+    public async Task RefreshAsync()
+    {
+        if (disposed) return;
+        isLoading = true;
+        loadError = "";
+        try
+        {
+            var loaded = await CategoryAdministration.GetCategoriesAsync();
+            if (disposed) return;
+            categories = loaded;
+            await OnChanged.InvokeAsync(categories);
+        }
+        catch (UnauthorizedAccessException) { NavManager.NavigateTo("/"); }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Category inventory could not be loaded.");
+            loadError = "We couldn't refresh categories. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+            if (!disposed) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    /// <summary>Copies the original name so concurrent renames cannot be silently overwritten.</summary>
+    private void EditCategory(CategoryInventoryItem category)
+    {
+        if (Unavailable) return;
+        editingId = category.Id;
+        originalName = category.Name;
+        form = new CategoryForm { Name = category.Name };
+        formError = "";
+        statusMessage = "";
+    }
+
+    // Reset only the category form; the separate product form keeps its pending values.
+    private void CancelEdit()
+    {
+        editingId = null;
+        originalName = "";
+        form = new CategoryForm();
+        formError = "";
+    }
+
+    /// <summary>Creates or renames through the service and retains entered values on validation errors.</summary>
+    private async Task SaveCategoryAsync()
+    {
+        if (Unavailable) return;
+        isSaving = true;
+        formError = "";
+        statusMessage = "";
+        await OnBusyChanged.InvokeAsync(true);
+        try
+        {
+            var isNew = editingId is null;
+            if (editingId is int categoryId)
+                await CategoryAdministration.RenameCategoryAsync(categoryId, form.Name, originalName);
+            else
+                await CategoryAdministration.CreateCategoryAsync(form.Name);
+            CancelEdit();
+            statusMessage = isNew ? "Category created successfully." : "Category renamed successfully.";
+            await RefreshAsync();
+        }
+        catch (ArgumentException exception) { formError = exception.Message; }
+        catch (UnauthorizedAccessException) { NavManager.NavigateTo("/"); }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Category save failed.");
+            formError = "We couldn't save the category. Please try again.";
+        }
+        finally
+        {
+            isSaving = false;
+            await OnBusyChanged.InvokeAsync(false);
+        }
+    }
+
+    /// <summary>Schedules the confirmation only for categories currently shown as unused.</summary>
+    private void RequestDeletion(CategoryInventoryItem category)
+    {
+        if (Unavailable || category.ProductCount > 0) return;
+        pendingDeletion = category;
+        deleteError = "";
+        formError = "";
+        statusMessage = "";
+        showDialogAfterRender = true;
+    }
+
+    /// <summary>Opens the dialog after its product name has reached the rendered DOM.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!showDialogAfterRender || disposed) return;
+        showDialogAfterRender = false;
+        try
+        {
+            dialogModule ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/categoryDialog.js");
+            await dialogModule.InvokeVoidAsync("show", deleteDialog);
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
+        {
+            Logger.LogError(exception, "Category deletion dialog could not be opened.");
+            pendingDeletion = null;
+            formError = "We couldn't open the confirmation. Please try again.";
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // Escape follows the same safe cancellation path as the Cancel button.
+    private Task HandleDialogKeyAsync(KeyboardEventArgs args) => args.Key == "Escape" && !isSaving
+        ? CancelDeletionAsync() : Task.CompletedTask;
+
+    /// <summary>Closes the modal without calling the deletion service.</summary>
+    private async Task CancelDeletionAsync()
+    {
+        if (isSaving) return;
+        if (dialogModule is not null) await dialogModule.InvokeVoidAsync("close", deleteDialog);
+        pendingDeletion = null;
+        deleteError = "";
+    }
+
+    /// <summary>Rechecks usage and authorization in the service only after explicit confirmation.</summary>
+    private async Task ConfirmDeletionAsync()
+    {
+        if (isSaving || Disabled || pendingDeletion is not { } category) return;
+        isSaving = true;
+        deleteError = "";
+        await OnBusyChanged.InvokeAsync(true);
+        try
+        {
+            var deleted = await CategoryAdministration.DeleteCategoryAsync(category.Id, category.Name);
+            if (dialogModule is not null) await dialogModule.InvokeVoidAsync("close", deleteDialog);
+            pendingDeletion = null;
+            if (editingId == category.Id) CancelEdit();
+            statusMessage = deleted ? "Category deleted successfully." : "This category was already removed. The list has been refreshed.";
+            await RefreshAsync();
+        }
+        catch (ArgumentException exception) { deleteError = exception.Message; }
+        catch (UnauthorizedAccessException) { NavManager.NavigateTo("/"); }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Category deletion failed.");
+            deleteError = "We couldn't delete the category. Please try again.";
+        }
+        finally
+        {
+            isSaving = false;
+            await OnBusyChanged.InvokeAsync(false);
+        }
+    }
+
+    /// <summary>Releases the JavaScript module when navigation removes the component.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        if (dialogModule is null) return;
+        try { await dialogModule.DisposeAsync(); }
+        catch (JSDisconnectedException) { }
+    }
+
+    /// <summary>Uses a separate model so category validation never submits the product form.</summary>
+    public sealed class CategoryForm
+    {
+        [Required(ErrorMessage = "Please enter a category name.")]
+        [StringLength(50, ErrorMessage = "Category names cannot exceed 50 characters.")]
+        public string Name { get; set; } = "";
+    }
+}

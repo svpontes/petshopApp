@@ -1,20 +1,23 @@
 @page "/admin/products"
-@using Microsoft.EntityFrameworkCore
 @using PetShopApp.Models
 @using PetShopApp.Services
-@inject ApplicationDbContext DbContext
+@using PetShopApp.Components.Shared
 @inject NavigationManager NavManager
 @inject AuthService AuthService
+@inject ProductAdministrationService ProductAdministration
+@inject IJSRuntime JS
+@inject ILogger<AdminProducts> Logger
 @rendermode InteractiveServer
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
-@using PetShopApp.Data
 
 @* --- ADMIN PRODUCT MANAGEMENT ---
-   Purpose: Centralized dashboard for administrators to manage the shirt inventory.
+   Purpose: Centralized dashboard for administrators to manage the pet product inventory.
    Features: Dynamic search, image previewing, and a dual-purpose Create/Edit form.
 *@
 
-<div class="container mt-5 pt-5">
+<PageTitle>Product Administration | Pet Love Care</PageTitle>
+
+<div class="container mt-5 pt-5 pb-5">
     <h2 class="fw-bold text-uppercase mb-4">Admin Product Inventory</h2>
 
     @* --- SECURITY LAYER --- *@
@@ -26,6 +29,26 @@
     }
     else
     {
+        @* Show validation and operation feedback without clearing failed edits. *@
+        @if (!string.IsNullOrEmpty(productError))
+        {
+            <div class="alert alert-danger rounded-0" role="alert">@productError</div>
+        }
+        @if (!string.IsNullOrEmpty(inventoryMessage))
+        {
+            <div class="alert alert-success rounded-0" role="status">@inventoryMessage</div>
+        }
+        @if (isLoading)
+        {
+            <p role="status">Loading inventory...</p>
+        }
+
+        @* Category management has its own form and authorized service. *@
+        <CategoryManager @ref="categoryManager" Disabled="@(isBusy || isLoading)"
+                         OnChanged="HandleCategoriesChanged" OnBusyChanged="HandleCategoryBusyChanged" />
+
+        @* Disable editing during a load or mutation to prevent repeated submissions. *@
+        <fieldset disabled="@(isBusy || isLoading || isManagingCategories)" class="border-0 p-0 m-0" style="min-width: 0;">
         @* --- PRODUCT FORM (CREATE / EDIT) --- *@
         <div class="card rounded-0 mb-4 shadow-sm">
             <div class="card-header bg-dark text-white text-uppercase small fw-bold">
@@ -34,34 +57,45 @@
             </div>
 
             <div class="card-body">
-                <EditForm Model="@editingProduct" OnValidSubmit="SaveProduct">
+                <EditForm @key="editingProduct" @ref="productEditForm" Model="@editingProduct" OnValidSubmit="SaveProduct">
                     <DataAnnotationsValidator />
                     <ValidationSummary />
 
                     <div class="row g-3">
                         @* Basic Product Info Inputs *@
                         <div class="col-md-4">
-                            <label class="form-label small fw-bold">Product Name</label>
-                            <InputText @bind-Value="editingProduct.Name" class="form-control rounded-0" />
+                            <label for="admin-product-name" class="form-label small fw-bold">Product Name</label>
+                            <InputText id="admin-product-name" required maxlength="200" @bind-Value="editingProduct.Name" class="form-control rounded-0" />
                         </div>
 
+                        @* Same-price options share this count; priced variants use their own fields below. *@
+                        @if (existingVariants.Count == 0 && pendingVariants.Count == 0)
+                        {
+                            <div class="col-md-3">
+                                <label for="admin-product-stock" class="form-label small fw-bold">Stock quantity</label>
+                                <InputNumber id="admin-product-stock" min="0" step="1"
+                                             @bind-Value="editingProduct.StockQuantity" class="form-control rounded-0" />
+                                <small class="text-muted">Units available. Zero means OUT OF STOCK.</small>
+                            </div>
+                        }
+
                         <div class="col-md-3">
-                            <label class="form-label small fw-bold">Price</label>
-                            <InputNumber @bind-Value="editingProduct.Price" class="form-control rounded-0" />
+                            <label for="admin-product-price" class="form-label small fw-bold">Price</label>
+                            <InputNumber id="admin-product-price" min="0" step="0.01" @bind-Value="editingProduct.Price" class="form-control rounded-0" />
                         </div>
 
                         <div class="col-md-5">
-                            <label class="form-label small fw-bold">Primary Image Path
-                               
+                            <label for="admin-product-image" class="form-label small fw-bold">Primary Image Path
+
                             </label>
-                            <InputText @bind-Value="editingProduct.ImageUrl" class="form-control rounded-0"
+                            <InputText id="admin-product-image" @bind-Value="editingProduct.ImageUrl" class="form-control rounded-0"
                                        placeholder="/images/imageF1.png" />
                         </div>
 
                         @* Image Gallery Management: Uses a raw string processed by new lines *@
                         <div class="col-12">
-                            <label class="form-label small fw-bold">Additional Image Paths</label>
-                            <InputTextArea @bind-Value="secondaryImagesText" class="form-control rounded-0" rows="4" />
+                            <label for="admin-product-gallery" class="form-label small fw-bold">Additional Image Paths</label>
+                            <InputTextArea id="admin-product-gallery" @bind-Value="secondaryImagesText" class="form-control rounded-0" rows="4" />
                             <small class="text-muted d-block mt-2">
                                 One image path per line.<br />
                                 /images/imageB1.png<br />
@@ -71,8 +105,8 @@
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label small fw-bold">Description</label>
-                            <InputTextArea @bind-Value="editingProduct.Description" class="form-control rounded-0" />
+                            <label for="admin-product-description" class="form-label small fw-bold">Description</label>
+                            <InputTextArea id="admin-product-description" @bind-Value="editingProduct.Description" class="form-control rounded-0" />
                         </div>
                         <div class="col-12">
                         <label for="more-information" class="form-label small fw-bold">
@@ -107,26 +141,91 @@
                             </InputSelect>
                         </div>
 
-                        @if (!string.IsNullOrEmpty(productError))
-                        {
-                            <div class="col-12">
-                                <div class="alert alert-danger mb-0" role="alert">
-                                    @productError
-                                </div>
-                            </div>
-                        }
                         <div class="col-12">
                                 <label for="product-options" class="form-label small fw-bold">
-                                    Product Options
+                                    Product Options (same price)
                                 </label>
                                 <InputText id="product-options"
                                         class="form-control rounded-0"
                                         @bind-Value="editingProduct.AvailableOptionsRaw"
                                         placeholder="2.2 lb, 11 lb, 22 lb, 44 lb" />
                                 <small class="text-muted">
-                                    Separate options with commas. Leave blank if the product has no options.
+                                    Separate labels with commas; all use the product price. For different prices, leave this blank and use Product Variants below. Priced variants take priority when both are present.
                                 </small>
                             </div>
+                        @* Variant prices are optional and can be prepared before the product exists. *@
+                        <div class="col-12 border-top mt-4 pt-3">
+                            <h5>Product Variants</h5>
+                            <p class="small text-muted">
+                                Add options with their own prices. Leave all variant fields blank for a product without priced variants.
+                                New product variants are saved together when you click Create Product.
+                            </p>
+                            <div @key="newVariant" class="row g-2 align-items-end">
+                                <div class="col-12 col-md-4">
+                                    <label for="variant-label" class="form-label">Option</label>
+                                    <InputText id="variant-label" maxlength="100" class="form-control"
+                                               @bind-Value="newVariant.Label" placeholder="2.2 lb" />
+                                </div>
+                                <div class="col-12 col-md-4">
+                                    <label for="variant-price" class="form-label">Unit Price</label>
+                                    <InputNumber id="variant-price" min="0.01" step="0.01"
+                                                 class="form-control" @bind-Value="newVariant.Price" />
+                                </div>
+                                <div class="col-12 col-md-2">
+                                    <label for="variant-stock" class="form-label">Stock quantity</label>
+                                    <InputNumber id="variant-stock" min="0" step="1" class="form-control"
+                                                 @bind-Value="newVariant.StockQuantity" />
+                                </div>
+                                <div class="col-12 col-md-2">
+                                    <button type="button" class="btn btn-dark w-100" @onclick="AddVariantAsync">
+                                        Add Variant
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(variantMessage))
+                            {
+                                <p class="mt-2" role="status">@variantMessage</p>
+                            }
+                            @if (pendingVariants.Count > 0)
+                            {
+                                <h6 class="mt-3">Variants to save</h6>
+                                <ul class="list-group mt-2">
+                                    @foreach (var variant in pendingVariants)
+                                    {
+                                        <li @key="variant" class="list-group-item d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                                            <span>@variant.Label — @variant.Price.ToString("C") — Stock: @variant.StockQuantity</span>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    aria-label="@($"Remove {variant.Label}")"
+                                                    @onclick="() => RemovePendingVariant(variant)">
+                                                Remove
+                                            </button>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            @if (existingVariants.Count > 0)
+                            {
+                                <h6 class="mt-3">Saved variants</h6>
+                                <ul class="list-group mt-2">
+                                    @foreach (var variant in existingVariants)
+                                    {
+                                        <li @key="variant.Id" class="list-group-item d-flex flex-wrap align-items-end gap-3">
+                                            <span>@variant.Label — @variant.Price.ToString("C")</span>
+                                            <div>
+                                                <label for="@($"saved-stock-{variant.Id}")" class="form-label small">Stock quantity</label>
+                                                <InputNumber id="@($"saved-stock-{variant.Id}")" min="0" step="1"
+                                                             class="form-control" style="max-width: 130px;"
+                                                             @bind-Value="variant.StockQuantity" />
+                                            </div>
+                                            <button type="button" class="btn btn-outline-dark rounded-0"
+                                                    @onclick="() => SaveVariantStockAsync(variant)">Update stock</button>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+
                         @* Action Buttons for the Form *@
                         <div class="col-12 d-flex gap-2">
                             <button type="submit" class="btn btn-dark rounded-0">
@@ -138,35 +237,9 @@
                             </button>
                         </div>
                     </div>
-                    
+
                 </EditForm>
-                @if (editingProduct.Id > 0)
-                    {
-                            <div class="border-top mt-4 pt-3">
-                                <h5>Product Variants</h5>
 
-                                <EditForm Model="@newVariant" OnValidSubmit="AddVariantAsync">
-                                    <div class="mb-2">
-                                        <label for="variant-label" class="form-label">Option</label>
-                                        <InputText id="variant-label" class="form-control"
-                                                @bind-Value="newVariant.Label" placeholder="11 lb" />
-                                    </div>
-
-                                    <div class="mb-2">
-                                        <label for="variant-price" class="form-label">Unit Price</label>
-                                        <InputNumber id="variant-price" class="form-control"
-                                                    @bind-Value="newVariant.Price" step="0.01" />
-                                    </div>
-
-                                    <button type="submit" class="btn btn-dark">Add Variant</button>
-                                </EditForm>
-
-                                @if (!string.IsNullOrEmpty(variantMessage))
-                                {
-                                    <p class="mt-2" role="status">@variantMessage</p>
-                                }
-                            </div>
-                    }
             </div>
         </div>
 
@@ -196,6 +269,7 @@
                                 <th>Preview</th>
                                 <th>Name</th>
                                 <th>Price</th>
+                                <th>Stock</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -213,11 +287,12 @@
                                     </td>
                                     <td>@p.Name</td>
                                     <td>@p.Price.ToString("C")</td>
+                                    <td>@(p.Variants.Count > 0 ? p.Variants.Sum(variant => (long)variant.StockQuantity) : p.StockQuantity)</td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => EditProduct(p)">
+                                        <button class="btn btn-sm btn-outline-primary me-2" type="button" @onclick="() => EditProduct(p)">
                                             Edit
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteProduct(p.Id)">
+                                        <button class="btn btn-sm btn-outline-danger" type="button" @onclick="() => DeleteProduct(p)">
                                             Delete
                                         </button>
                                     </td>
@@ -227,7 +302,7 @@
                             @if (!FilteredProducts.Any())
                             {
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">No products found.</td>
+                                    <td colspan="6" class="text-center text-muted py-4">No products found.</td>
                                 </tr>
                             }
                         </tbody>
@@ -235,6 +310,7 @@
                 </div>
             </div>
         </div>
+        </fieldset>
     }
 </div>
 
@@ -242,225 +318,378 @@
     private List<Product> products = new();
     private List<AnimalType> animalTypes = new();
     private List<Category> categories = new();
-    private string productError = "";
     private Product editingProduct = new();
+    private VariantInput newVariant = new();
+    private EditForm? productEditForm;
+    private readonly List<ProductVariantDraft> pendingVariants = new();
+    private List<ProductVariant> existingVariants = new();
+    private Dictionary<int, int> originalVariantStock = new();
+    private int originalProductStock;
     private string searchTerm = "";
     private string secondaryImagesText = "";
+    private string productError = "";
+    private string inventoryMessage = "";
+    private string variantMessage = "";
+    private bool isLoading = true;
+    private bool isBusy;
+    private bool isManagingCategories;
+    private CategoryManager? categoryManager;
 
-    /// <summary>
-    /// Computed property that filters the product list based on the search string.
-    /// This happens in-memory for fast UI response.
-    /// </summary>
+    // Search only the detached inventory returned by the authorized service.
     private IEnumerable<Product> FilteredProducts =>
         string.IsNullOrWhiteSpace(searchTerm)
             ? products
-            : products.Where(p => p.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+            : products.Where(product => product.Name.Contains(
+                searchTerm, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>
-    /// Initial load and security redirect.
-    /// </summary>
+    /// <summary>Refreshes category labels and choices while preserving the product and variant draft.</summary>
+    private void HandleCategoriesChanged(IReadOnlyList<CategoryInventoryItem> updatedCategories)
+    {
+        categories = updatedCategories.Select(category => new Category { Id = category.Id, Name = category.Name }).ToList();
+        foreach (var product in products.Where(product => product.CategoryId is not null))
+        {
+            var category = categories.FirstOrDefault(item => item.Id == product.CategoryId);
+            product.Category = category?.Name ?? "";
+            product.ProductCategory = category;
+        }
+        if (editingProduct.CategoryId is int selectedId)
+        {
+            var selected = categories.FirstOrDefault(category => category.Id == selectedId);
+            editingProduct.Category = selected?.Name ?? "";
+            if (selected is null) editingProduct.CategoryId = null;
+        }
+    }
+
+    // Keep product mutations disabled while category names and associations are changing.
+    private void HandleCategoryBusyChanged(bool busy) => isManagingCategories = busy;
+
     protected override async Task OnInitializedAsync()
     {
-
-          // Recheck administrator access immediately before this operation.
-        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
-        {
-            NavManager.NavigateTo("/");
-            return;
-        }
-        if (!AuthService.IsAdmin)
-        {
-            NavManager.NavigateTo("/");
-            return;
-        }
-        animalTypes = await DbContext.AnimalTypes
-        .OrderBy(animal => animal.Name)
-        .ToListAsync();
-
-        categories = await DbContext.Categories
-        .OrderBy(category => category.Name)
-        .ToListAsync();
-        await LoadProducts();
+        await RefreshInventoryAsync();
     }
 
+    /// <summary>
+    /// Refreshes data through the service and handles a revoked administrator session.
+    /// </summary>
+    private async Task RefreshInventoryAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var inventory = await ProductAdministration.GetInventoryAsync();
+            products = inventory.Products;
+            animalTypes = inventory.AnimalTypes;
+            categories = inventory.Categories;
+            existingVariants = products.FirstOrDefault(product => product.Id == editingProduct.Id)
+                ?.Variants.OrderBy(variant => variant.Id).ToList() ?? new List<ProductVariant>();
+            originalVariantStock = existingVariants.ToDictionary(variant => variant.Id, variant => variant.StockQuantity);
+            // Refresh category usage counts after a product is created, moved or deleted.
+            if (categoryManager is not null) await categoryManager.RefreshAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            NavManager.NavigateTo("/");
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Inventory refresh failed.");
+            productError = "We couldn't refresh the inventory. Please try again.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Handles an explicit refresh without overlapping a pending mutation.
+    /// </summary>
     private async Task LoadProducts()
     {
-        // Recheck administrator access immediately before this operation.
-        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
-        {
-            NavManager.NavigateTo("/");
+        if (isBusy || isLoading)
             return;
-        }
-        products = await DbContext.Products.OrderBy(p => p.Name).ToListAsync();
+
+        productError = "";
+        inventoryMessage = "";
+        await RefreshInventoryAsync();
     }
 
     /// <summary>
-    /// Loads a selected product into the form for modification.
+    /// Copies editable fields without sharing tracked entities with the edit form.
     /// </summary>
-    private Task EditProduct(Product p)
+    private void EditProduct(Product product)
     {
-    newVariant = new ProductVariant();
-    variantMessage = "";
+        if (isBusy || isLoading)
+            return;
 
-    editingProduct = new Product
-    {
-        Id = p.Id,
-        Name = p.Name,
-        Description = p.Description,
-        MoreInformation = p.MoreInformation,
-        Price = p.Price,
-        ImageUrl = p.ImageUrl,
-        SecondaryImageUrlsRaw = p.SecondaryImageUrlsRaw,
-        AnimalTypeId = p.AnimalTypeId,
-        CategoryId = p.CategoryId,
-        Category = p.Category,
-        AvailableOptionsRaw = p.AvailableOptionsRaw
-    };
-
-    secondaryImagesText = p.SecondaryImageUrlsRaw ?? "";
-    productError = "";
-
-    return Task.CompletedTask;
+        editingProduct = new Product
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Description = product.Description,
+            MoreInformation = product.MoreInformation,
+            AnimalTypeId = product.AnimalTypeId,
+            CategoryId = product.CategoryId,
+            Category = product.Category,
+            Price = product.Price,
+            StockQuantity = product.StockQuantity,
+            ImageUrl = product.ImageUrl,
+            SecondaryImageUrlsRaw = product.SecondaryImageUrlsRaw,
+            AvailableOptionsRaw = product.AvailableOptionsRaw
+        };
+        originalProductStock = product.StockQuantity;
+        originalVariantStock = product.Variants.ToDictionary(variant => variant.Id, variant => variant.StockQuantity);
+        secondaryImagesText = product.SecondaryImageUrlsRaw;
+        pendingVariants.Clear();
+        existingVariants = product.Variants.OrderBy(variant => variant.Id).ToList();
+        newVariant = new VariantInput();
+        productError = "";
+        variantMessage = "";
+        inventoryMessage = "";
     }
 
     /// <summary>
-    /// Persists changes to the SQLite database. Handles both new entry insertion
-    /// and existing entry updates.
+    /// Keeps entered values when service validation fails and resets only after success.
     /// </summary>
     private async Task SaveProduct()
     {
-        // Recheck administrator access immediately before this operation.
-        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
+        if (isBusy || isLoading)
+            return;
+
+        isBusy = true;
+        productError = "";
+        inventoryMessage = "";
+        try
+        {
+            var isNew = editingProduct.Id == 0;
+            editingProduct.SecondaryImageUrlsRaw = secondaryImagesText;
+            var variantsToSave = pendingVariants.ToList();
+
+            // Include a completed editor row even if Add Variant was not clicked.
+            var enteredVariant = ReadVariantEditor();
+            if (enteredVariant is not null)
+                variantsToSave.Add(enteredVariant);
+
+            await ProductAdministration.SaveProductAsync(editingProduct, variantsToSave, originalProductStock);
+            ResetForm();
+            inventoryMessage = isNew ? "Product created successfully." : "Product updated successfully.";
+            await RefreshInventoryAsync();
+        }
+        catch (ArgumentException exception)
+        {
+            productError = exception.Message;
+        }
+        catch (UnauthorizedAccessException)
         {
             NavManager.NavigateTo("/");
-            return;
         }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Product save failed.");
+            productError = "We couldn't save the product. Please try again.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Requests browser confirmation before invoking the protected deletion operation.
+    /// </summary>
+    private async Task DeleteProduct(Product product)
+    {
+        if (isBusy || isLoading)
+            return;
+
+        isBusy = true;
         productError = "";
-
-        if (!animalTypes.Any(animal => animal.Id == editingProduct.AnimalTypeId))
+        inventoryMessage = "";
+        try
         {
-            productError = "Select an animal type before saving.";
-            return;
-        }
-
-        if (editingProduct.CategoryId is int categoryId)
-        {
-            var category = categories.FirstOrDefault(item => item.Id == categoryId);
-
-            if (category is null)
-            {
-                productError = "Select a valid category.";
+            var confirmed = await JS.InvokeAsync<bool>("confirm",
+                $"Delete \"{product.Name}\"? Purchased order history will be preserved.");
+            if (!confirmed)
                 return;
+
+            var deleted = await ProductAdministration.DeleteProductAsync(product.Id);
+            if (editingProduct.Id == product.Id)
+                ResetForm();
+            inventoryMessage = deleted
+                ? "Product deleted successfully. Purchased order history was preserved."
+                : "This product was already removed. The inventory has been refreshed.";
+            await RefreshInventoryAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            NavManager.NavigateTo("/");
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Product deletion failed.");
+            productError = "We couldn't delete the product. Please try again.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Stages variants for an unsaved product or saves a new option for an existing product.
+    /// </summary>
+    private async Task AddVariantAsync()
+    {
+        if (isBusy || isLoading)
+            return;
+
+        isBusy = true;
+        productError = "";
+        variantMessage = "";
+        try
+        {
+            var variant = ReadVariantEditor()
+                ?? throw new ArgumentException("Enter an option and its unit price before adding a variant.");
+
+            if (pendingVariants.Any(item => item.Label == variant.Label))
+                throw new ArgumentException("This option is already in the draft.");
+
+            if (editingProduct.Id == 0)
+            {
+                // No database row is created until the complete product is submitted.
+                pendingVariants.Add(variant);
+                variantMessage = "Variant added to the draft. Click Create Product to save it.";
+            }
+            else
+            {
+                await ProductAdministration.AddVariantAsync(
+                    editingProduct.Id, variant.Label, variant.Price, variant.StockQuantity);
+                variantMessage = "Product option saved successfully.";
+                await RefreshInventoryAsync();
             }
 
-            editingProduct.Category = category.Name;
+            newVariant = new VariantInput();
         }
-        editingProduct.SecondaryImageUrlsRaw = secondaryImagesText?.Trim() ?? "";
-
-        if (string.IsNullOrWhiteSpace(editingProduct.ImageUrl))
-            editingProduct.ImageUrl = "/images/placeholder.png";
-
-        if (editingProduct.Id == 0)
+        catch (ArgumentException exception)
         {
-            DbContext.Products.Add(editingProduct);
+            productError = exception.Message;
         }
-        else
-        {
-            var dbProduct = await DbContext.Products.FindAsync(editingProduct.Id);
-            if (dbProduct == null) return;
-
-            dbProduct.Name = editingProduct.Name;
-            dbProduct.Description = editingProduct.Description;
-            dbProduct.MoreInformation = editingProduct.MoreInformation;
-            dbProduct.AnimalTypeId = editingProduct.AnimalTypeId;
-            dbProduct.CategoryId = editingProduct.CategoryId;
-            dbProduct.Category = editingProduct.Category;
-            dbProduct.Price = editingProduct.Price;
-            dbProduct.ImageUrl = editingProduct.ImageUrl;
-            dbProduct.SecondaryImageUrlsRaw = editingProduct.SecondaryImageUrlsRaw;
-            dbProduct.SecondaryImageUrlsRaw = editingProduct.SecondaryImageUrlsRaw;
-            dbProduct.AvailableOptionsRaw = editingProduct.AvailableOptionsRaw;
-        }
-
-        await DbContext.SaveChangesAsync();
-        await LoadProducts();
-        ResetForm();
-    }
-
-    private async Task DeleteProduct(int id)
-    {
-        // Recheck administrator access immediately before this operation.
-        if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
+        catch (UnauthorizedAccessException)
         {
             NavManager.NavigateTo("/");
-            return;
         }
-        var product = await DbContext.Products.FindAsync(id);
-        if (product == null) return;
-
-        DbContext.Products.Remove(product);
-        await DbContext.SaveChangesAsync();
-        await LoadProducts();
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Product option creation failed.");
+            productError = "We couldn't save the option. Please try again.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
     }
 
+    /// <summary>
+    /// Saves a variant count separately and rejects stale inventory instead of undoing a sale.
+    /// </summary>
+    private async Task SaveVariantStockAsync(ProductVariant variant)
+    {
+        if (isBusy || isLoading)
+            return;
+        productError = "";
+        variantMessage = "";
+        var field = new FieldIdentifier(variant, nameof(ProductVariant.StockQuantity));
+        if (productEditForm?.EditContext?.GetValidationMessages(field).Any() == true)
+        {
+            productError = "Enter a whole stock quantity of zero or more.";
+            return;
+        }
+        isBusy = true;
+        try
+        {
+            await ProductAdministration.UpdateVariantStockAsync(
+                variant.Id, originalVariantStock[variant.Id], variant.StockQuantity);
+            variantMessage = "Stock updated successfully.";
+            await RefreshInventoryAsync();
+        }
+        catch (ArgumentException exception)
+        {
+            productError = exception.Message;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            NavManager.NavigateTo("/");
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Variant stock update failed.");
+            productError = "We couldn't update stock. Please try again.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Allows a blank editor and rejects partial rows or invalid numeric input.
+    /// </summary>
+    private ProductVariantDraft? ReadVariantEditor()
+    {
+        var priceField = new FieldIdentifier(newVariant, nameof(VariantInput.Price));
+        var stockField = new FieldIdentifier(newVariant, nameof(VariantInput.StockQuantity));
+        if (productEditForm?.EditContext?.GetValidationMessages(stockField).Any() == true)
+            throw new ArgumentException("Enter a whole stock quantity of zero or more.");
+        if (productEditForm?.EditContext?.GetValidationMessages(priceField).Any() == true)
+            throw new ArgumentException("Enter a valid unit price for the variant.");
+
+        var label = newVariant.Label.Trim();
+        if (label.Length == 0 && newVariant.Price is null && newVariant.StockQuantity is null)
+            return null;
+
+        if (label.Length == 0 || label.Length > 100 ||
+            newVariant.Price is not decimal price || price <= 0 ||
+            newVariant.StockQuantity is not int stock || stock < 0)
+        {
+            throw new ArgumentException("Enter an option, a unit price greater than zero and a stock quantity of zero or more, or leave all variant fields blank.");
+        }
+
+        return new ProductVariantDraft(label, price, stock);
+    }
+
+    // Removing a pending row changes only this form, never a saved product or order.
+    private void RemovePendingVariant(ProductVariantDraft variant)
+    {
+        if (!isBusy && !isLoading)
+            pendingVariants.Remove(variant);
+    }
+
+    /// <summary>
+    /// A nullable price keeps optional variant inputs genuinely empty at the start.
+    /// </summary>
+    private sealed class VariantInput
+    {
+        public string Label { get; set; } = "";
+        public decimal? Price { get; set; }
+        public int? StockQuantity { get; set; }
+    }
+
+    // Replace form models so previous validation state is cleared after a successful action.
     private void ResetForm()
     {
-        newVariant = new ProductVariant();
-        variantMessage = "";
         editingProduct = new Product();
+        newVariant = new VariantInput();
         secondaryImagesText = "";
+        pendingVariants.Clear();
+        existingVariants.Clear();
+        originalVariantStock.Clear();
+        originalProductStock = 0;
+        productError = "";
+        variantMessage = "";
+        inventoryMessage = "";
     }
 
-    private static string GetImageUrl(string? url)
-    {
-        return string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
-    }
-    private ProductVariant newVariant = new();
-    private string variantMessage = "";
-
-    private async Task AddVariantAsync()
-        {
-            // Recheck administrator access immediately before this operation.
-            if (!await AuthService.IsAuthorizedAsync(requireAdmin: true))
-            {
-            NavManager.NavigateTo("/");
-            return;
-        }
-            variantMessage = "";
-
-            if (!AuthService.IsAdmin || editingProduct.Id <= 0)
-                return;
-
-            var productId = editingProduct.Id;
-            var label = newVariant.Label?.Trim() ?? "";
-            var price = newVariant.Price;
-
-            if (label.Length == 0 || price <= 0)
-            {
-                variantMessage = "Enter an option and a price greater than zero.";
-                return;
-            }
-
-            var exists = await DbContext.ProductVariants.AnyAsync(
-                variant => variant.ProductId == productId && variant.Label == label);
-
-            if (exists)
-            {
-                variantMessage = "This option already exists for this product.";
-                return;
-            }
-
-            DbContext.ProductVariants.Add(new ProductVariant
-            {
-                ProductId = productId,
-                Label = label,
-                Price = price
-            });
-
-            await DbContext.SaveChangesAsync();
-
-            newVariant = new ProductVariant();
-            variantMessage = $"Saved {label} at ${price:0.00}.";
-    }
-
+    // Use the existing placeholder when an image path has not been supplied.
+    private static string GetImageUrl(string? url) =>
+        string.IsNullOrWhiteSpace(url) ? "/images/placeholder.png" : url.Trim();
 }

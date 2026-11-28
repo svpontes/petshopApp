@@ -50,6 +50,10 @@ public class OrderService
 
         await using var db = await _dbFactory.CreateDbContextAsync();
 
+        // Hold one transaction across inventory reads, conditional decrements and order saving.
+        // SQLite serializes writers; the conditional updates also reject insufficient stock.
+        await using var transaction = await db.Database.BeginTransactionAsync();
+
         var productIds = request.Items
             .Select(item => item.ProductId)
             .Distinct()
@@ -106,9 +110,43 @@ public class OrderService
             OrderItems = purchasedItems
         };
 
-        // One SaveChanges call persists the complete order.
+        // Group all lines sharing a stock pool, including distinct same-price CSV sizes.
+        // Repeated request lines must never bypass the quantity check.
+        foreach (var productLines in request.Items.GroupBy(line => line.ProductId).OrderBy(group => group.Key))
+        {
+            var product = productsById[productLines.Key];
+            if (product.Variants.Count > 0)
+            {
+                foreach (var optionLines in productLines.GroupBy(line => line.Size).OrderBy(group => group.Key))
+                {
+                    var variant = product.Variants.Single(item => item.Label == optionLines.Key);
+                    var quantity = optionLines.Sum(line => (long)line.Quantity);
+                    var affected = quantity > int.MaxValue ? 0 : await db.ProductVariants
+                        .Where(item => item.Id == variant.Id && item.StockQuantity >= (int)quantity)
+                        .ExecuteUpdateAsync(update => update.SetProperty(
+                            item => item.StockQuantity, item => item.StockQuantity - (int)quantity));
+                    if (affected != 1)
+                        throw new StockUnavailableException(
+                            $"Not enough stock for {product.Name} ({variant.Label}). Please review your bag.");
+                }
+            }
+            else
+            {
+                var quantity = productLines.Sum(line => (long)line.Quantity);
+                var affected = quantity > int.MaxValue ? 0 : await db.Products
+                    .Where(item => item.Id == product.Id && item.StockQuantity >= (int)quantity)
+                    .ExecuteUpdateAsync(update => update.SetProperty(
+                        item => item.StockQuantity, item => item.StockQuantity - (int)quantity));
+                if (affected != 1)
+                    throw new StockUnavailableException(
+                        $"Not enough stock for {product.Name}. Please review your bag.");
+            }
+        }
+
+        // Any failure rolls back every decrement and the entire order together.
         db.Orders.Add(order);
         await db.SaveChangesAsync();
+        await transaction.CommitAsync();
 
         return order.Id;
     }

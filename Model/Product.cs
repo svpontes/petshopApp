@@ -31,6 +31,9 @@ namespace PetShopApp.Models
         
         public decimal Price { get; set; }
 
+        // Shared inventory for products without priced variants, including CSV options.
+        public int StockQuantity { get; set; }
+
         public List<ProductVariant> Variants { get; set; } = new();
 
         public string ImageUrl { get; set; } = string.Empty;
